@@ -4,8 +4,11 @@
 <head>
     <!--for ie9 support-->
     <!--<meta http-equiv="X-UA-Compatible" content="IE=Edge" />-->
-
+    <link rel="stylesheet" href="./css/zTreeStyle.css" type="text/css">
+    <link rel="stylesheet" href="./css/common.css" type="text/css">
     <script type="text/javascript" src='./js/vdWebControl.js'></script>
+    <script type="text/javascript" src="./js/jquery-1.4.4.min.js"></script>
+    <script type="text/javascript" src="./js/jquery.ztree.core.js"></script>
 
     <script type="text/javascript" src='./js/ListBox.js'></script>
     <script type="text/javascript" src='./js/main.js'></script>
@@ -22,7 +25,15 @@
                 different web browser.
             </div>
         </div>
-        <div id="LayersListBox" style="    position: absolute;    left: 10px;    top: 30px;">
+        <div class="content_wrap">
+            <div>
+                <ul id="treeDemo" class="ztree"></ul>
+            </div>
+        </div>
+        <div id="infoWin">
+            <div id="infoWin_title">&nbsp;&nbsp;属性-title</div>
+            <span id="infoClose">X</span>
+            <div id="infoWin_content">我是内容</div>
         </div>
         <label id="Label1">
             Coordinates :</label><label id="info3"></label>

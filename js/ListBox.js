@@ -2,6 +2,81 @@
 //Version: 1.0
 //This script is created by Samir Nigam. Do not remove, modify, or hide the author information. keep it intact.
 //Mail: nigam.samir@hotmail.com
+var setting = {
+    data: {
+        key: {
+            title: "title"
+        },
+        simpleData: {
+            enable: true
+        }
+    }
+};
+
+var zNodes =[
+    { id:1, pId:0, name:"父节点1", title:"", open:true},
+    { id:11, pId:1, name:"父节点11", title:""},
+    { id:111, pId:11, name:"叶子节点111", title:"", isHidden:true},
+    { id:112, pId:11, name:"叶子节点112", title:""},
+    { id:113, pId:11, name:"叶子节点113", title:""},
+    { id:12, pId:1, name:"父节点12", title:"", isHidden:true},
+    { id:121, pId:12, name:"叶子节点121", title:""},
+    { id:122, pId:12, name:"叶子节点122", title:"", isHidden:true},
+    { id:123, pId:12, name:"叶子节点123", title:""},
+    { id:2, pId:0, name:"父节点2", title:""},
+    { id:21, pId:2, name:"父节点21", title:"", isHidden:true},
+    { id:211, pId:21, name:"叶子节点211", title:""},
+    { id:212, pId:21, name:"叶子节点212", title:""},
+    { id:213, pId:21, name:"叶子节点213", title:""},
+    { id:22, pId:2, name:"父节点22", title:""},
+    { id:221, pId:22, name:"叶子节点221", title:""},
+    { id:222, pId:22, name:"叶子节点222", title:""},
+    { id:223, pId:22, name:"叶子节点223", title:""}
+];
+function setTitle(node) {
+    var zTree = $.fn.zTree.getZTreeObj("treeDemo");
+    var nodes = node ? [node]:zTree.transformToArray(zTree.getNodes());
+    for (var i=0, l=nodes.length; i<l; i++) {
+        var n = nodes[i];
+        n.title = "[" + n.id + "] isFirstNode = " + n.isFirstNode + ", isLastNode = " + n.isLastNode;
+        zTree.updateNode(n);
+    }
+}
+function count() {
+    var zTree = $.fn.zTree.getZTreeObj("treeDemo"),
+    hiddenCount = zTree.getNodesByParam("isHidden", true).length;
+    $("#hiddenCount").text(hiddenCount);
+}
+function showNodes() {
+    var zTree = $.fn.zTree.getZTreeObj("treeDemo"),
+    nodes = zTree.getNodesByParam("isHidden", true);
+    zTree.showNodes(nodes);
+    setTitle();
+    count();
+}
+function hideNodes() {
+    var zTree = $.fn.zTree.getZTreeObj("treeDemo"),
+    nodes = zTree.getSelectedNodes();
+    if (nodes.length == 0) {
+        alert("请至少选择一个节点");
+        return;
+    }
+    zTree.hideNodes(nodes);
+    setTitle();
+    count();
+}
+
+$(document).ready(function(){
+    $.fn.zTree.init($("#treeDemo"), setting, zNodes);
+    $("#hideNodesBtn").bind("click", {type:"rename"}, hideNodes);
+    $("#showNodesBtn").bind("click", {type:"icon"}, showNodes);
+    setTitle();
+    count();
+});
+
+
+
+
 
 function ListBox(Arguments)
 {

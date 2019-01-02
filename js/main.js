@@ -74,18 +74,18 @@ function _vdAfterOpenDocument(e) {
     var vdcanvas = vdmanager.vdrawObject('display');
     var layers = vdcanvas.GetDocument().Layers;
 
-    oListBox.DeleteItems();
-    for (var c = 0; c < layers.Items.length; c++) {
-        var layer = vdcanvas.GetDictItem(layers, layers.Items[c]);
-        var selected = true;
-        var fr = layer.Frozen;
-        if (fr === null) selected = true;
-        else {
-            if (fr === true) selected = false;
-            else selected = true;
-        }
-        oListBox.AddItem(layer.Name, layer.HandleId, selected);
-    }
+    // oListBox.DeleteItems();
+    // for (var c = 0; c < layers.Items.length; c++) {
+    //     var layer = vdcanvas.GetDictItem(layers, layers.Items[c]);
+    //     var selected = true;
+    //     var fr = layer.Frozen;
+    //     if (fr === null) selected = true;
+    //     else {
+    //         if (fr === true) selected = false;
+    //         else selected = true;
+    //     }
+    //     oListBox.AddItem(layer.Name, layer.HandleId, selected);
+    // }
 
     // var layouts = vdcanvas.GetDocument().LayOuts;
     // if (layouts == null) {
@@ -121,7 +121,7 @@ function vdrawInitPageLoad() {
     vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS;
 
     ExtendCancvas();
-    InitLayersList();
+    // InitLayersList();
     Open();
 }
 function _progress(evt) {
