@@ -189,3 +189,4 @@ function About() {
         + '•And you can also ask a printout of the extends of the drawing using the print button';
     alert(str);
 }
+

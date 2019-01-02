@@ -22,12 +22,15 @@
     height: 30px;
     margin-top: 5px;
     border-bottom: 1px solid;
+    cursor: move;
 }
 
 #infoClose{
     position: absolute;
     right: 5px;
     top: 2px;
+    z-index: 99;
+    cursor: pointer;
 }
 #infoClose :hover{
     cursor: pointer;
