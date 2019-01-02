@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+    
+    <script type="text/javascript">
+        var vdcanvas;
+        function vdrawInitPageLoad() {
+            vdcanvas = vdmanager.AttachCanvas('display', 400, 400);
+            vdcanvas.GripManager.Enable = false;
+            document.getElementById('noJavascript').innerHTML = "";
+            vdcanvas.SetEnableSelection(false);
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdcanvas.SetDefaultTimeOutMilliseconds(500);
+            vdcanvas.vdprogress = _progress;
+            vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS + vdConst.DEFAULT_ROTATE3D;
+            document.getElementById("sectionChBx");
+            ExtendCancvas();
+        }
+        
+        function _vdAfterOpenDocument(e) {
+            
+
+            var layouts = vdcanvas.GetDocument().LayOuts;
+            document.getElementById("LayoutsButton").disabled = (layouts == null);
+
+            document.getElementById("perspective").checked = false;
+            document.getElementById("section").checked = false;
+            document.getElementById("sectionChBx").hidden = (vdcanvas.GetActiveLayout().Sections == undefined);
+
+            document.getElementById('rendermode').value = 5;applyRenderMode();
+            document.getElementById('openBtn').disabled = false;
+        }
+        function nextlayout() {
+            
+            vdcanvas.SetActiveLayoutId(vdcanvas.GetActiveLayoutId() + 1);
+        }
+
+        
+        function _progress(evt) {
+            if (evt.percent < 0) printInfo('info2', evt.Info);
+            else if (evt.percent >= 100) printInfo('info2', ' ');
+            else printInfo('info2', evt.Info + " " + evt.percent.toString() + "%");
+        }
+        function Open() {
+            var combo = document.getElementById('DrawingCombo');
+            var selected = combo.options[combo.selectedIndex].text;
+            var name = "../Drawings/" + selected + ".vds";
+            document.getElementById('openBtn').disabled = true;
+            vdcanvas.SelectDocument(name);
+        }
+        function ExtendCancvas() {
+            var winW = 640, winH = 480;
+            if (document.body && document.body.offsetWidth) {
+                winW = document.body.offsetWidth;
+                winH = document.body.offsetHeight;
+            }
+            if (document.compatMode == 'CSS1Compat' &&
+                document.documentElement &&
+                document.documentElement.offsetWidth) {
+                winW = document.documentElement.offsetWidth;
+                winH = document.documentElement.offsetHeight;
+            }
+            if (window.innerWidth && window.innerHeight) {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+            }
+            vdcanvas.SetSize(winW - 30 - 150, winH - 185);
+        }
+        this.printInfo = function(infoId, text) {
+
+            var info = document.getElementById(infoId);
+            if (info == undefined) return;
+            info.innerHTML = text;
+        }
+        function printCanvas() {
+            
+            var dataUrl = vdcanvas.printToImageData(vdConst.PRINT_WINDOW_FLAG_VIEW, vdConst.PRINT_SCALE_FLAG_FIT, new Array(830, 1170), 10, Array(255, 255, 255, 255), 2);
+
+            var windowContent = '<!DOCTYPE html>';
+            windowContent += '<html>'
+            windowContent += '<head><title>Print canvas</title></head>';
+            windowContent += '<body>'
+            windowContent += '<img src="' + dataUrl + '">';
+            windowContent += '</body>';
+            windowContent += '</html>';
+            var printWin = window.open('', '', 'width=830,height=600,scrollbars=yes,resizable=yes,menubar=yes,toolbar=yes');
+            printWin.document.open();
+            printWin.document.write(windowContent);
+            printWin.document.close();
+            printWin.focus();
+        }
+        function toggleSections() {
+
+            var sections = vdcanvas.GetActiveLayout().Sections;
+            if (!sections) return;
+            var checkbox = document.getElementById("section");
+            sections.Items[0].Enable = checkbox.checked;
+
+            setTimeout(vdcanvas.redraw, 50);
+        }
+        function toggleLeftButtonUse() {
+            
+            var useButton = document.getElementById("use");
+            if (useButton.innerHTML.indexOf("Click for Desktop") == 0) {
+                useButton.innerHTML = "Click for Tablet Use";
+                document.getElementById("leftBut").innerHTML = "-Press and hold the <b>left</b> mouse button to pan.";
+                document.getElementById("rightBut").innerHTML = "-Press and hold the <b>middle</b> mouse button to rotate.";
+                vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS + vdConst.DEFAULT_ROTATE3D;
+            }
+            else {
+                useButton.innerHTML = "Click for Desktop Use";
+                document.getElementById("leftBut").innerHTML = "-Touch the screen and slide to rotate.";
+                document.getElementById("rightBut").innerHTML = "";
+                vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_ZOOMEXTENTS + vdConst.DEFAULT_ROTATE3D;
+            }
+        }
+        function applyRenderMode() {
+
+            switch (document.getElementById('rendermode').value) {
+                case "0":
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_WIRE_2d);
+                    break;
+                case "1":
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_WIRE_3d);
+                    break;
+                case "2":
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_SHADE);
+                    break;
+                case "3":
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_SHADE_GL);
+                    break;
+                case "4":
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_RENDER);
+                    break;
+                case "5":
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_RENDER_GL);
+                    break;
+                default:
+                    vdcanvas.SetRenderMode(vdConst.RENDERMODE_RENDER);
+                    break;
+            }
+
+        }
+        
+        function OnPerspective(canvasid) {
+            
+            var layout = vdcanvas.GetActiveLayout();
+            if (!layout) return;
+
+            layout.PerspectiveMod = document.getElementById('perspective').checked ? 1 : 0;
+            setTimeout(vdcanvas.redraw, 50);
+        }
+        /*function About() {
+        var str = 'This is a basic sample that is intended to demonstrate basic functionality of our web javascript solution.\n'
+        + '•So in this sample you can zoom (with mouse wheel or two finger gesture in a touch screen!).\n'
+        + '•You can Pan (with left/middle click or one touch gesture in touch screens).\n'
+        + '•Zoom Extends is available with Double Click.\n'
+        + '•You can open different drawings and navigate to their layouts using the Next Layout button if available.\n'
+        + ' The drawings are already uploaded and exported(from our main library) in our special javascript format.\n'
+        + '•Handle the layers of the drawing using the side listbox.\n'
+        + '•Also you can click on an entity and get it\'s type and handle.\n'
+        + '•And you can also ask a printout of the extends of the drawing using the print button';
+        alert(str);
+        }*/
+    </script>
+
+    <style type="text/css">
+        .style
+        {
+            width: 100px;
+            height: 29px;
+        }
+    </style>
+</head>
+<body onload="vdrawInitPageLoad()">
+    <table border="0">
+		<tr>
+			<td rowspan="2" colspan="1">
+				<button id="use" style="height:50px; width:100px" onclick="toggleLeftButtonUse()">Click for Tablet Use</button>
+			</td>
+			<td colspan="2">
+				<p id="leftBut"> -Press and hold the <b>left</b> mouse button to pan.</p>
+			</td>			
+        </tr>
+		<tr>
+			<td colspan="2">
+				<p id="rightBut"> -Press and hold the <b>middle</b> mouse button to rotate.</p>
+			</td>
+			
+        </tr>
+        <tr>
+            <td>
+                <select id="DrawingCombo" onchange="Open()">
+                    <option value="basic 3D shapes">basic 3D shapes</option>
+					<option value="basic 3D shapes with section">basic 3D shapes with section</option>
+                    <option value="Yacht">Yacht</option>                    
+                    <option value="Kitchen">Kitchen</option>
+					<option value="Ancient Ship">Ancient Ship</option>                    
+                    <option value="Display Table">Display Table</option>
+					<option value="Modern House">Modern House</option>
+					<option value="Classic Car">Classic Car</option>.
+					<option value="Parthenon">Parthenon</option>										
+                </select>
+            </td>
+            <td>
+                <button id="openBtn" onclick="Open()" style="height: 25px; width: 150px">
+                    Open</button>
+            </td>
+            <td>
+                <button onclick="printCanvas()" style="height: 25px; width: 150px">
+                    Print </button> 
+            </td>
+			<td>
+				| RenderMode
+				<select id="rendermode" onchange="applyRenderMode()">				
+                    <option value="5">WebGL-Render</option>
+					<option value="4">Render</option>
+					<option value="3">WebGL-Shade</option>
+                    <option value="2">Shade</option>
+					<option value="1">Wire3D</option>
+					<option value="0">Wire2D</option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<div id="perspChBx"> <input id='perspective' type="checkbox" onclick="OnPerspective('display')">Perspective </input> </div>
+			</td>
+			<td>
+				<div id="sectionChBx"> <input id='section' type="checkbox" onclick="toggleSections()">Apply Section</input> </div>
+			</td>
+            <td>
+                <label id="info2"></label>
+            </td>
+             
+		</tr>
+		
+    </table>
+    <table>
+        <tr>
+            <td rowspan="2">
+                <canvas id='display' tabindex="1"> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>			
+        </tr>
+    </table>
+    <table>
+        <tr>
+            <td class="style">
+                <button id="LayoutsButton" onclick="nextlayout()">
+                    Next Layout</button>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<html>
+<head>
+	
+    <script type="text/javascript" src='..\webControl\vdWebControl.js'></script>
+    <script type="text/javascript">
+
+    // In this example we will create some new 3d objects like box,cone,sphere,polyface and heatmap.
+	
+        var vdcanvas;       
+        function vdrawInitPageLoad() {//Intiallize the web control inside this function.It must be called inside onload event of this page
+
+            vdcanvas = vdmanager.AttachCanvas("canvas"); //create a new web control attached it to the canvas elemement
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument; //defines the function that will be fire when a web control document loaded.  	
+            vdcanvas.SelectDocument("vddocument.vds");//load a new document 
+		
+        }       
+        function _vdAfterOpenDocument() {//fire when a web control document loaded.   
+            var document = vdcanvas.GetDocument();
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_SHADE_GL); // set the RENDERMODE_SHADE_GL to see better the 3d shapes
+        }		
+        function box() {
+			var box = vdcanvas.AddBox([-4, -4, 0], 2, 1, 2, vdgeo.HALF_PI/ 2.0 , true);//create a new box
+			box.PenColor = vdConst.colorFromString("255,255,0,180");//set the color to yellow with transparency 180
+			vdcanvas.UpdateFig(box);// Update the new figure in order to see the changes like the color 
+			setTimeout(vdcanvas.redraw); // post a redraw to see the result
+        }  
+		 function cone() {
+		     var cone = vdcanvas.AddCone([-4, 3, 0], 1, 0, 2, 15, true); //create a new cone
+		     cone.PenColor = vdConst.colorFromString("100,255,0,150"); //set a color with transparency 150
+		     vdcanvas.UpdateFig(cone); // Update the new figure in order to see the changes like the color 
+		     setTimeout(vdcanvas.redraw); // post a redraw to see the result
+        }  
+		 function sphere() {
+		     var sphere = vdcanvas.AddSphere([3, 3, 0], 1, 20, 10, true); //create a new sphere
+		     sphere.PenColor = vdConst.colorFromString("255,50,50,255"); //set a color with transparency 255
+		     vdcanvas.UpdateFig(sphere); // Update the new figure in order to see the changes like the color 
+		     setTimeout(vdcanvas.redraw); // post a redraw to see the result
+        }  
+		function polyface() {
+			var VertexList = [// the vertex list of the polyface
+             [0, 0, 0],
+             [1, 0, 0],
+             [1, 1, 0],
+             [0, 1, 0],
+             [0, 0, 1],
+             [1, 0, 1],
+             [1, 1, 1],
+             [0, 1, 1]
+            ];
+           var FaceList = [
+            1, 2, 3, 4, 1,//first face from indexes 1,2,3,4 and Color index 1.
+            5, 6, 7, 8, 2,//2nd face from indexes 5, 6, 7, 8 and Color index 2.
+            1, 2, 6, 5, 3,
+            2, 3, 7, 6, 4,
+            3, 4, 8, 7, 5,
+            4, 1, 5, 8, 6
+           ];
+           vdcanvas.AddPolyface(VertexList, FaceList, true);// create the new polyface 
+        }  
+		function heatmap() {
+			var points = [ 
+                [2, 0, 0], //the first 4 segments using color 0 from elevColors which is [255,50,0]
+                [6, 0, 0],
+                [6, -4, 0],
+                [2, -4, 0],
+
+				[3, -3, 1], //the next 4 segments using color 1 from elevColors which is [155,255,0]
+                [5, -3, 1],
+                [5, -1, 1],
+                [3, -1, 1],
+
+				[4, -2, 2]	//the last segment which is  the peak of the heatmap with color 2 from elevColors which is [0,40,255]			
+              ];
+			
+		    var elevColors = [
+                0, [255, 50, 0],
+                1, [155, 255, 0],
+                2, [0, 40, 255]                
+              ];
+
+		    vdcanvas.AddHeatMap(points, elevColors, 8, true); // create the new heatmap 
+		    setTimeout(vdcanvas.redraw);  // post a redraw to see the result
+        }  
+		
+    </script>
+</head>
+<body onload="vdrawInitPageLoad()"  bgcolor="#004d99">
+<p>
+    <div>    
+		<center>
+			<button onclick="box()" style="width: 90px; height:30px;">Box</button>	
+			<button onclick="cone()" style="width: 90px; height:30px;">Cone</button>	
+			<button onclick="sphere()" style="width: 90px; height:30px;">Sphere</button>	
+			<button onclick="polyface()" style="width: 90px; height:30px;">Polyface</button>	
+			<button onclick="heatmap()" style="width: 90px; height:30px;">HeatMap</button>	
+		</center>
+    </div> 
+</p>
+ <p>
+    <div>  
+		<center>	
+			<canvas id="canvas"  style="width: 700px; height:500px;"> </canvas>
+		</center>
+    </div>   
+    <center>
+       <font color="white">Press the middle wheel button of the mouse and rotate the scene to see better the 3d objects</font>
+    </center>
+</p>
+</body>
+</html>

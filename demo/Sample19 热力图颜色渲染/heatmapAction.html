@@ -1,0 +1,298 @@
+<html>
+<head>
+	
+    <script type="text/javascript" src="../webControl/vdWebControl.js"></script>	
+    <script type="text/javascript">
+	    
+        var vdcanvas;  		
+        function vdrawInitPageLoad() {
+            vdcanvas = vdmanager.AttachCanvas("canvas");
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdcanvas.SelectDocument("vddocument.vds");//select an empty drawing
+        }
+
+        function _vdAfterOpenDocument() {
+            showPopupAbout();// show the pop up with some information
+            var document = vdcanvas.GetDocument(); // get the document
+			vdcanvas.SetRenderMode(vdConst.RENDERMODE_SHADE_GL); // set the render mode to shade gl
+			baseHeatmap();// draw a new heatmap
+         }
+
+         function baseHeatmap() {// draw a new heatmap using the below parameters
+			var points = [ 
+                [0, 0, 0],
+                [10, 0, 0],
+                [10, 10, 0],  
+                [0, 10, 0],
+				
+				[2, 2, 2],
+                [8, 2, 2], 
+                [8, 8, 2],
+                [2, 8, 2],
+				
+				[4, 4, 4], 
+                [6, 4, 4],
+                [6, 6, 4], 
+                [4, 6, 4],  
+				
+				[5, 5, 5]				
+              ];
+			
+		    var elevColors = [ 
+                0, [0, 50, 255], 
+                2, [80, 255, 0], 
+                4, [255, 200, 0], 
+				5, [255, 0, 0]		 		
+              ];
+
+		    vdcanvas.AddHeatMap(points, elevColors, 8, true);
+		    vdcanvas.SetStdView(vdConst.StdView_ISO_NW);
+			vdcanvas.zoomExtents();
+			vdcanvas.redraw();
+     	}
+     
+	var LLbottom;
+	var LRbottom;
+	var URbottom;
+	var ULbottom; 
+		
+	var LLfirst;	
+	var LRfirst;	
+	var URfirst; 
+	var ULfirst;
+		
+	var LLsecond;	
+	var LRsecond;	
+	var URsecond;	
+	var ULsecond;
+	
+	var topPoint;
+	
+	var baseColor;
+	var firstLevelColor;
+	var secondLevelColor;
+	
+		function actionHeatmap() {
+			var points = [// points passed from text boxes
+			
+				LLbottom, 
+                LRbottom,
+                URbottom,  
+                ULbottom,
+				
+				LLfirst,
+                LRfirst,
+                URfirst,
+                ULfirst,
+				
+				LLsecond, 
+                LRsecond,
+                URsecond, 
+                ULsecond, 
+				
+				topPoint		 		
+              ];
+			
+		    var elevColors = [ // colors passed from text boxes
+                0, baseColor, 
+                2, firstLevelColor, 
+                4, secondLevelColor, 
+				5, topColor	 		 
+              ]; 
+		
+		    var layout = vdcanvas.GetActiveLayout();//get the active layout
+		    layout.Entities.Items.length -= 1;// delete the previous heatmap in order to draw the new one 
+		    vdcanvas.AddHeatMap(points, elevColors, 8, true); // draw the heatmap
+			vdcanvas.redraw(); // post a redraw in order to see the new result 
+		}
+		
+		function redrawScene() {
+		
+			LLbottom = document.getElementById("LLbottom").value; 
+			LLbottom = [Number(LLbottom.split(',')[0]),Number(LLbottom.split(',')[1]),0];// the lower left point of base rectangle
+		
+			LRbottom = document.getElementById("LRbottom").value;
+			LRbottom = [Number(LRbottom.split(',')[0]), Number(LRbottom.split(',')[1]), 0]; // the lower right point of base rectangle
+			
+			URbottom = document.getElementById("URbottom").value;
+			URbottom = [Number(URbottom.split(',')[0]), Number(URbottom.split(',')[1]), 0]; // the upper right point of base rectangle
+	
+			ULbottom = document.getElementById("ULbottom").value;
+			ULbottom = [Number(ULbottom.split(',')[0]), Number(ULbottom.split(',')[1]), 0]; // the upper left point of base rectangle
+		
+			LLfirst = document.getElementById("LLfirst").value;
+			LLfirst = [Number(LLfirst.split(',')[0]), Number(LLfirst.split(',')[1]), 2]; // the lower left point of first level rectangle
+		
+			LRfirst = document.getElementById("LRfirst").value;
+			LRfirst = [Number(LRfirst.split(',')[0]), Number(LRfirst.split(',')[1]), 2]; // the lower right point of first level rectangle
+		
+			URfirst = document.getElementById("URfirst").value;
+			URfirst = [Number(URfirst.split(',')[0]), Number(URfirst.split(',')[1]), 2]; // the upper right point of first level rectangle
+		
+			ULfirst = document.getElementById("ULfirst").value;
+			ULfirst = [Number(ULfirst.split(',')[0]), Number(ULfirst.split(',')[1]), 2]; // the upper left point of first level rectangle
+		
+			LLsecond = document.getElementById("LLsecond").value;
+			LLsecond = [Number(LLsecond.split(',')[0]), Number(LLsecond.split(',')[1]), 4]; // the lower left point of second level rectangle
+		
+			LRsecond = document.getElementById("LRsecond").value;
+			LRsecond = [Number(LRsecond.split(',')[0]), Number(LRsecond.split(',')[1]), 4]; // the lower right point of second level rectangle
+		
+			URsecond = document.getElementById("URsecond").value;
+			URsecond = [Number(URsecond.split(',')[0]), Number(URsecond.split(',')[1]), 4]; // the upper right point of second level rectangle
+		
+			ULsecond = document.getElementById("ULsecond").value;
+			ULsecond = [Number(ULsecond.split(',')[0]), Number(ULsecond.split(',')[1]), 4]; // the upper left point of second level rectangle
+		
+			topPoint = document.getElementById("topPoint").value;
+			topPoint = [Number(topPoint.split(',')[0]),Number(topPoint.split(',')[1]),5]; // the top point
+	
+			baseColor = document.getElementById("baseColor").value;
+			baseColor = [Number(baseColor.split(',')[0]),Number(baseColor.split(',')[1]),Number(baseColor.split(',')[2])]; // base color
+			
+			firstLevelColor = document.getElementById("firstLevelColor").value;
+			firstLevelColor = [Number(firstLevelColor.split(',')[0]),Number(firstLevelColor.split(',')[1]),Number(firstLevelColor.split(',')[2])]; // first level color
+			
+			secondLevelColor = document.getElementById("secondLevelColor").value;
+			secondLevelColor = [Number(secondLevelColor.split(',')[0]),Number(secondLevelColor.split(',')[1]),Number(secondLevelColor.split(',')[2])]; // second level color
+			
+			topColor = document.getElementById("topColor").value;
+			topColor = [Number(topColor.split(',')[0]),Number(topColor.split(',')[1]),Number(topColor.split(',')[2])]; // top color
+			
+			actionHeatmap(); // after we have get all passed values we call the new heatmap
+
+         }
+        function showPopupAbout() {
+             document.getElementById("popupAbout").style.display = "block";
+        }
+        function exitPopupAbout() { 
+            
+             document.getElementById("popupAbout").style.display = "none";
+        }
+       
+    </script>
+   <style>
+     #popupAbout
+        {
+             position: absolute;
+            left: 10%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 600px;
+            height: 700px;
+        }
+    </style>
+</head>
+<body onload="vdrawInitPageLoad()"  bgcolor="#538cc6">	
+ <div id="popupAbout" style="border: 4px solid white; width: 1000px; height: 430px; overflow: scroll; background-color: #9fbfdf;">
+   
+        <p align="center"><b><u>This is a HeatMap example of vdWebControl</u></b></p>
+        <br/>
+        <b><u>Description</u></b>
+        <br/>
+        <br/>In this sample we create two heatmaps,the first base heatmap and the second action draw heatmap.
+        <br/>At first we create a new heatmap on the afterOpenDocument event and that's the drawing that we first see on the canvas element.
+        <br/>Now we can see the base heatMap and on the right side of the canvas we see the segments of each level of the heatmap,the colors of
+        <br/>each level and a REDRAW button.So now we can customize the parameters of the heatmap and when REDRAW button clicked we will be able to see the new result.
+        <br/>Note that the base rectangle has Z value = 0 and this value is used to recognize the color of every level,so we have set by default when the
+        <br/>value is [o] the color will be [0,50,255]
+        <br/>The first level rectangle has Z value = 2 and when the value is [2] the color will be [80,255,0].
+        <br/>The second level rectangle has Z value = 4 and when the value is [4] the color will be [255,200,0].
+        <br/>The top level has Z value = 5 and when the value is [5] the color will be [255,0,0]. 
+        <br/><b>NOTE</b> that the <b>Z</b> value can be used to show an altidute like the example that we have created,but also it can be used to show a temperature  
+        <br/>value on a surface.So by using the X,Y values for the location of an object and the Z value for the temperature we can create a heatmap 
+        <br/>which will show the temperature plan of a surface.
+        <br/>
+        <br/>
+        <p align="center">    
+        <input type="button" onclick="exitPopupAbout()" value="EXIT" style="width: 130px" /> 
+        </p>
+        <br />            
+    </div>
+	<table>	
+		 <tr>
+            <td>				
+				<canvas id="canvas"  style="width: 800px; height:650px;"> </canvas>
+			</td>
+			<td>
+				<div style="border: 3px solid white; width: 330px; height: 640px; overflow: scroll;
+                    background-color: #bfbfbf;">
+					<center>
+						<br /> 
+						<b style="color: #009999">Customize Base Rectangle </b>
+						<br />
+						<a style="color: black">LowrerLeftCorner [X,Y] </a>
+						<input type="text" id="LLbottom" value="0,0" style="width: 70px" />       
+						<br />
+						<a style="color: black">LowrerRightCorner [X,Y] </a>
+						<input type="text" id="LRbottom" value="10,0" style="width: 70px" />       
+						<br />
+						<a style="color: black">UpperRightCorner [X,Y] </a>
+						<input type="text" id="URbottom" value="10,10" style="width: 70px" />       
+						<br />
+						<a style="color: black">UpperLeftCorner [X,Y] </a>
+						<input type="text" id="ULbottom" value="0,10" style="width: 70px" />       
+						<br />
+						<br /> 
+						<b style="color: #009999">Customize First Level Rectangle </b>
+						<br />
+						<a style="color: black">LowrerLeftCorner [X,Y] </a>
+						<input type="text" id="LLfirst" value="2,2" style="width: 70px" />       
+						<br />
+						<a style="color: black">LowrerRightCorner [X,Y] </a>
+						<input type="text" id="LRfirst" value="8,2" style="width: 70px" />       
+						<br />
+						<a style="color: black">UpperRightCorner [X,Y] </a>
+						<input type="text" id="URfirst" value="8,8" style="width: 70px" />       
+						<br />
+						<a style="color: black">UpperLeftCorner [X,Y] </a>
+						<input type="text" id="ULfirst" value="2,8" style="width: 70px" />       
+						<br />
+						<br />
+						<b style="color: #009999">Customize Second Level Rectangle </b>
+						<br />
+						<a style="color: black">LowrerLeftCorner [X,Y] </a>
+						<input type="text" id="LLsecond" value="4,4" style="width: 70px" />       
+						<br />
+						<a style="color: black">LowrerRightCorner [X,Y] </a>
+						<input type="text" id="LRsecond" value="6,4" style="width: 70px" />       
+						<br />
+						<a style="color: black">UpperRightCorner [X,Y] </a>
+						<input type="text" id="URsecond" value="6,6" style="width: 70px" />       
+						<br />
+						<a style="color: black">UpperLeftCorner [X,Y] </a>
+						<input type="text" id="ULsecond" value="4,6" style="width: 70px" />       
+						<br />
+						<br />
+						<b style="color: #009999">Customize Top point </b>
+						<br />
+						<a style="color: black">Top Point [X,Y] </a>
+						<input type="text" id="topPoint" value="5,5" style="width: 70px" />       
+						<br />
+						<br />
+						<b style="color: #009999">Customize Colors </b>
+						<br />
+						<a style="color: black">ColorOfBase [R,G,B] </a>
+						<input type="text" id="baseColor" value="0,50,255" style="width: 90px" /> 
+						<br />		
+						<a style="color: black">ColorOfFirstLevel [R,G,B] </a>
+						<input type="text" id="firstLevelColor" value="80,255,0" style="width: 90px" />   
+						<br />		
+						<a style="color: black">ColorOfSecondLevel [R,G,B] </a>
+						<input type="text" id="secondLevelColor" value="255,200,0" style="width: 90px" />  	
+						<br />		
+						<a style="color: black">ColorOfTop [R,G,B] </a>
+						<input type="text" id="topColor" value="255,0,0" style="width: 90px" /> 		
+						<br />
+						<br />
+						<input type="button" onclick="redrawScene()" value="REDRAW" style="width: 110px; height:25px;" />
+					</center>
+				</div>
+			</td> 			
+		</tr>			
+	</table>
+</body>
+</html>

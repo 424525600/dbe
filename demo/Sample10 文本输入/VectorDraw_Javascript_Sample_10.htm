@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+	<script type="text/javascript" src='vdColorpicker.js'></script>
+	<script type="text/javascript" src='vdKeyboard.js'></script>
+	 
+    <script type="text/javascript">
+		
+		var cp;
+		var keyb;
+		var vdcanvas;
+		function vdrawInitPageLoad() {
+		    vdmanager.AttachCanvas('texteditor', 450, 450*0.6);	
+			var noJava = document.getElementById('noJavascript')
+			if (noJava) noJava.innerHTML = "";
+			vdcanvas = vdmanager.vdrawObject('texteditor');
+			vdcanvas.GripManager.Enable = false;
+			vdcanvas.SelectDocument('../Drawings/TextEditor.vds');
+			vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+			vdgeo.CURVERESOLUTION  = 1000;
+			vdcanvas.ActiveAction().DefaultActions = 0;
+			vdcanvas.SetEnableSelection(false);
+        }
+		function UpdateColors(e){
+				getFromXProperty("FrontText").PenColor.SystemColor[0] = e.FrontColor[0];
+				getFromXProperty("FrontText").PenColor.SystemColor[1] = e.FrontColor[1];
+				getFromXProperty("FrontText").PenColor.SystemColor[2] = e.FrontColor[2];
+				getFromXProperty("FrontText").PenColor.SystemColor[3] = e.FrontColor[3];
+
+				getFromXProperty("BackText").PenColor.SystemColor[0] = e.BackColor[0];
+				getFromXProperty("BackText").PenColor.SystemColor[1] = e.BackColor[1];
+				getFromXProperty("BackText").PenColor.SystemColor[2] = e.BackColor[2];
+				getFromXProperty("BackText").PenColor.SystemColor[3] = e.BackColor[3];
+				
+				_redraw(vdcanvas, 0);
+		}
+		function _vdAfterOpenDocument(e){
+			e.zoomExtents();
+			
+			cp = new vdColorpicker();
+
+			cp.initColorpicker('colorpick', 350);
+			cp.colorChanged = _colorChanged;
+			cp.loaded = _loadedColPick;            
+		}
+		function _loadedColPick(){
+			keyb = new vdKeyboard();
+			keyb.initKeyboard("keyboard", 450);
+			keyb.keyPressed = _keyPressed;		
+		}
+		var FrontColor;
+		var BackColor;
+		function _colorChanged(e) {
+			UpdateColors(e);		
+		}	
+		function _keyPressed(keyValue, keyType){
+			var FrontText = getFromXProperty("FrontText");
+			var BackText = getFromXProperty("BackText");
+			if (keyType == "simpleKey")
+			{
+				FrontText.TextString += keyValue;
+				vdcanvas.UpdateFig(FrontText);
+			}
+			else if (keyType == "controlKey")
+			{
+				if (keyValue == "Bksp")
+				{
+					FrontText.TextString = FrontText.TextString.substring(0, FrontText.TextString.length - 1);
+					//BackText.TextString = BackText.TextString.substring(0, BackText.TextString.length - 1);
+				}
+				else if (keyValue == "←")//←↑→↓
+				{
+					FrontText.InsertionPoint[0] -= 0.1;
+					BackText.InsertionPoint[0] -= 0.1;
+				}
+				else if (keyValue == "↑")
+				{
+					FrontText.InsertionPoint[1] += 0.1;
+					BackText.InsertionPoint[1] += 0.1;
+				}
+				else if (keyValue == "→")
+				{
+					FrontText.InsertionPoint[0] += 0.1;
+					BackText.InsertionPoint[0] += 0.1;
+				}
+				else if (keyValue == "↓")
+				{
+					FrontText.InsertionPoint[1] -= 0.1;
+					BackText.InsertionPoint[1] -= 0.1;
+				}
+				else if (keyValue == "Del")
+				{
+					FrontText.TextString = "";
+					//BackText.TextString = "";
+				}
+				vdcanvas.UpdateFig(FrontText);
+				vdcanvas.UpdateFig(BackText);
+			}
+			_redraw(vdcanvas, 0);
+		}
+		function getFromXProperty(propValue){
+			var layout = vdcanvas.GetActiveLayout();
+			if (!layout) return;
+			var entities = layout.Entities;
+			if (entities == undefined || entities.Items == undefined || entities.Items.length == undefined) return null;
+			for (var k = 0; k < entities.Items.length; k++) {
+				var fig = vdcanvas.GetEntityItem(entities.Items[k]);
+				if (fig.XProperties == undefined) continue;
+				if (fig.XProperties.Items[0].PropValue == propValue)
+					return fig;
+			}
+			return null;
+		}
+		function _redraw(vdraw, delay) {		
+			if (delay == -1)
+				vdraw.redraw();
+			else
+				setTimeout(vdraw.redraw, delay);
+		}
+    </script>
+	<style>
+		H4 {color:rgb(200,200,200);}
+		p {color:rgb(200,200,200);}
+	</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+    <table border="0" align="center">
+		<tr>
+			<td>	
+				<div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+				<H4 align="center"> Use the keyboard to edit the card's text.</br>
+				Use the color picker on the left to edit the text's colors.</H4>
+				<table border="0" align="center">
+					<tr>
+						<td rowspan=2><div id="colorpick"></div></td>
+						<td align="left"><canvas id="texteditor"> </canvas>	</div></td>						
+					</tr>
+					<tr>
+						<td><div id="keyboard" align="left"></div></td>						
+					</tr>
+				</table> 
+				<p align="right"> *All three elements inside this sample use the vdWeb library</p>	
+			</td>
+		</tr>		
+    </table>
+</body>
+</html>

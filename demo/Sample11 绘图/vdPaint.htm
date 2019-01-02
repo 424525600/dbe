@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html lang= "en">
+<head>
+	<!--for ie9 support-->
+	<meta http - equiv = "X-UA-Compatible" content = "IE=Edge"/>
+	<title> main </title>
+	<script type = "text/javascript" src = '../webControl/vdWebControl.js'></script>
+	<script type = "text/javascript" src = 'colorpicker_v2.js'></script>
+	<script type = "text/javascript" src = 'vdPaint.js'></script>
+<style>
+ .divtop{
+			line-height: 30px;
+			background-color:#1E2945;
+			background: -webkit-gradient( linear, left top, left bottom, color-stop(0.91, #1E2945), color-stop(1, #BDC6DE) );
+			background: -moz-linear-gradient( center top, #1E2945 91%, #BDC6DE 100% );
+			color: #BDC6DE;
+			font-size: 110%;
+			font-weight: bold;
+	}
+ .divmain{
+			background-color:#E4D7BE;
+			background:-webkit-gradient( linear, right top, left bottom, color-stop(0.05, #E4D7BE), color-stop(1, #E4C88E) );
+			background:-moz-linear-gradient( center right, #E4D7BE 5%, #E4C88E 100% );		
+	}
+ img:hover {
+			background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #dfdfdf), color-stop(1, lightblue) );
+			background:-moz-linear-gradient( center top, #dfdfdf 5%, lightblue 100% );
+			filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#dfdfdf', endColorstr=lightblue);
+			background-color:lightblue;
+}
+img:active {
+	position:relative;
+	top:1px;
+}
+ </style>
+</head>
+<body onload = "vdrawInitPageLoad()">	
+	<div class="divtop" width="1600px"><center>VD Web Library Paint Sample</center></div>
+	<div class="divmain" width="1600px">
+		<table border="0" align="center">
+			<tr>
+				<td></td>			
+				<td>
+					<center>
+						<img id="starEmpty" src="starEmpty.png" width="50" height="50" onclick="initBlock('starEmpty', this.id)"></img> 
+						<img id="starFilled" src="starFilled.png" width="50" height="50" onclick="initBlock('starFilled', this.id)"></img> 
+						<img id="circleEmpty" src="circleEmpty.png" width="50" height="50" onclick="initBlock('circleEmpty', this.id)"></img> 
+						<img id="circleFilled" src="circleFilled.png" width="50" height="50" onclick="initBlock('circleFilled', this.id)"></img> 
+						<img id="arrowEmpty" src="arrowEmpty.png" width="50" height="50" onclick="initBlock('arrowEmpty', this.id)"></img> 
+						<img id="arrowFilled" src="arrowFilled.png" width="50" height="50" onclick="initBlock('arrowFilled', this.id)"></img> 
+						<img id="cloudEmpty" src="cloudEmpty.png" width="50" height="50" onclick="initBlock('cloudEmpty', this.id)"></img> 
+						<img id="cloudFilled" src="cloudFilled.png" width="50" height="50" onclick="initBlock('cloudFilled', this.id)"></img> 
+						<img id="brush" style="background-color:BDC6DE" src="brush.png" width="50" height="50" onclick="initBlock(null, this.id)"></img> 
+						<img id="eraser" src="eraser.png" width="50" height="50" onclick="initBlock('eraser', this.id)"></img>					
+					</center>
+				</td>
+				<td rowspan=3>
+					<div id="colors"></div>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<canvas id = "brushes"></canvas>
+				</td>
+				<td>
+					<canvas id = "myCanvas"></canvas></br>
+					
+				</td>
+			<tr>
+				<td><div id="loading"></td>
+				<td><img id="clear" src="clear.png" width="50" height="50" onclick="clearAll()"></img>
+				<img id="print" src="print.png" width="50" height="50" onclick="printDrawing()"></img></td>
+			</tr>	
+		</table>  
+	</div>
+</body>
+</html>

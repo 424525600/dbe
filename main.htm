@@ -1,0 +1,35 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+
+<head>
+    <!--for ie9 support-->
+    <!--<meta http-equiv="X-UA-Compatible" content="IE=Edge" />-->
+
+    <script type="text/javascript" src='./js/vdWebControl.js'></script>
+
+    <script type="text/javascript" src='./js/ListBox.js'></script>
+    <script type="text/javascript" src='./js/main.js'></script>
+
+</head>
+
+<body onload="vdrawInitPageLoad()" onunload="OnUnload()">
+    <div>
+        <canvas id='display'> </canvas>
+        <div id='noJavascript'>
+            <div style="height: 95%; width: 95%; background-color:#b0c4de;">
+                The browser you're using does not allow the use of Javascript, please enable Javascript execution or
+                use a
+                different web browser.
+            </div>
+        </div>
+        <div id="LayersListBox" style="    position: absolute;    left: 10px;    top: 30px;">
+        </div>
+        <label id="Label1">
+            Coordinates :</label><label id="info3"></label>
+        <label id="Label2">
+            Info :</label><label id="info2"></label><br />
+    </div>
+
+</body>
+
+</html>

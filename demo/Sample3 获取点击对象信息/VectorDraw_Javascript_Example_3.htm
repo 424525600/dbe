@@ -1,0 +1,427 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    
+        <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+    
+    <script type="text/javascript">
+        function _vdmousedown(e) {
+            e.target.canvas.title = "";
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
+            if (entity != null && entity._t != undefined) {
+                //<!-- general vdfigure properties -->
+                var hat_pat = vdcanvas.GetDocument().HatchPatterns;
+                var lin_typs = vdcanvas.GetDocument().LineTypes;
+                var txt_stls = vdcanvas.GetDocument().TextStyles;
+                var blks = vdcanvas.GetDocument().Blocks;
+                InfoArea.value = "Item Clicked \r\nType : " + e.target.Fig_codeToString(entity._t) + "\r\nHandle : " + entity.HandleId.toString();
+                if (entity.Layer != null) {
+                    InfoArea.value = InfoArea.value + "" + "\r\nLayer: " + vdcanvas.GetEntityItem(entity.Layer).Name;
+                }
+                if (entity.LineType != null) {
+                    InfoArea.value = InfoArea.value + "" + "\r\nLineType: " + vdcanvas.GetEntityItem(entity.LineType).Name;
+                }
+                if (entity.ToolTip != null) {
+                    InfoArea.value = InfoArea.value + "" + "\r\nTooltip: " + entity.ToolTip;
+                }
+                if (entity.URL != null) {
+                    InfoArea.value = InfoArea.value + "" + "\r\nURL: " + entity.URL;
+                }
+                if (entity.PenColor != null) {
+                    var ent_color;
+                    if (entity.PenColor.ColorFlag != null) {
+                        if (entity.PenColor.ColorFlag === 192) {
+                            ent_color = "ByLayer";
+                        } else {
+                            if (entity.PenColor.ColorFlag === 193) {
+                                ent_color = "ByBlock";
+                            }
+                        }
+                    }
+                    else {
+                        if (entity.PenColor.ColorIndex != null) {
+                            ent_color = entity.PenColor.ColorIndex;
+                        }
+                        else {
+                            ent_color = entity.PenColor.SystemColor + "(RGBA)";
+                        }
+                    }
+                    
+                    InfoArea.value = InfoArea.value + "" + "\r\nPenColor: " + ent_color;
+                }
+                InfoArea.value = InfoArea.value + "" + "\r\n\r\n ---- Geometric Properties ---- ";
+                // <!-- geometric  properties -->
+                // <!-- vdLine  properties -->
+                if (entity._t === 1) { // vdLine
+                    if (entity.StartPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nStartPoint: " + entity.StartPoint;
+                    }
+                    if (entity.EndPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nEndPoint: " + entity.EndPoint;
+                    }
+                }
+                // <!-- vdPolyLine  properties -->
+                if (entity._t === 2) { // vdPolyLine
+                    if (entity.VertexList != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nVertexes count: " + entity.VertexList.Items.length;
+                    }
+                }
+
+                // <!-- vdText  properties -->
+                if (entity._t === 3) { // vdText
+                    if (entity.InsertionPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nInsertion Pt: " + entity.InsertionPoint;
+                    }
+                    if (entity.TextString != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nText: " + entity.TextString;
+                    }
+                    if (entity.Rotation != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRotation: " + +vdgeo.FixAngle(entity.Rotation) * 180.0 / vdgeo.PI + "°";
+                    }
+                    if (entity.Style != null) {
+
+                        InfoArea.value = InfoArea.value + "" + "\r\nTextStyle: " + vdcanvas.GetDictItem(txt_stls, entity.Style).Name;
+                    }
+                }
+                // <!-- vdRect  properties -->
+                if (entity._t === 4) { // vdRect
+                    if (entity.InsertionPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nInsertion Pt: " + entity.InsertionPoint;
+                    }
+                    if (entity.Rotation != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRotation: " + vdgeo.FixAngle(entity.Rotation) * 180.0 / vdgeo.PI +"°";
+                    }
+                    if (entity.Height != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHeight: " + entity.Height;
+                    }
+                    if (entity.Width != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nWidth: " + entity.Width;
+                    }
+                }
+                // <!-- vdCirle  properties -->
+                if (entity._t === 5) { // vdCirle
+                    if (entity.Center != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nCenter Pt: " + entity.Center;
+                    }
+                    if (entity.Radius != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRadius: " + entity.Radius;
+                    }
+                }
+                // <!-- vdEllipse  properties -->
+                if (entity._t === 6) { // vdEllipse
+                    if (entity.Center != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nCenter Pt: " + entity.Center;
+                    }
+                    if (entity.MajorLength != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nMajor Axis Length: " + entity.MajorLength;
+                    }
+                    if (entity.MinorLength != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nMinor Axis Length: " + entity.MinorLength;
+                    }
+                    if (entity.MajorAngle != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nMajor Axis Angle: " + vdgeo.FixAngle(entity.MajorAngle) * 180.0 / vdgeo.PI + "°";
+                    }
+                    if (entity.StartAngle != entity.EndAngle) {
+
+                        if (entity.StartAngle != null) {
+                            InfoArea.value = InfoArea.value + "" + "\r\nStart Angle: " + vdgeo.FixAngle(entity.StartAngle) * 180.0 / vdgeo.PI + "°";
+                        }
+                        if (entity.EndAngle != null) {
+                            InfoArea.value = InfoArea.value + "" + "\r\nEnd Angle: " + vdgeo.FixAngle(entity.EndAngle) * 180.0 / vdgeo.PI + "°";
+                        }
+                    }
+                }
+                // <!-- vdArc  properties -->
+                if (entity._t === 7) { // vdArc
+                    if (entity.Center != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nCenter Pt: " + entity.Center;
+                    }
+                    if (entity.Radius != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRadius: " + entity.Radius;
+                    }
+                    if (entity.StartAngle != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nStart Angle: " + vdgeo.FixAngle(entity.StartAngle) * 180.0 / vdgeo.PI+"°";
+                    }
+                    if (entity.EndAngle != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nEnd Angle: " + vdgeo.FixAngle(entity.EndAngle) * 180.0 / vdgeo.PI + "°";
+                    }
+                }
+                // <!-- vdImage  properties -->
+                if (entity._t === 8) { // vdImage
+                    if (entity.InsertionPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nInsertion Pt: " + entity.InsertionPoint;
+                    }
+                    if (entity.Rotation != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRotation: " + +vdgeo.FixAngle(entity.Rotation) * 180.0 / vdgeo.PI + "°";
+                    }
+                    if (entity.Height != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHeight: " + entity.Height;
+                    }
+                    if (entity.Width != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nWidth: " + entity.Width;
+                    }
+                    if (entity.ImageScale != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nImageScale: " + entity.ImageScale;
+                    }
+                }
+                // <!-- vdInsert  properties -->
+                if (entity._t === 9) { // vdInsert
+                    if (entity.InsertionPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nInsertion Pt: " + entity.InsertionPoint;
+                    }
+                    if (entity.Rotation != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRotation: " + vdgeo.FixAngle(entity.Rotation) * 180.0 / vdgeo.PI + "°";
+                    }
+                    if (entity.BlockRef != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nBlockName: " + vdcanvas.GetDictItem(blks, entity.Block).Name;
+                    }
+                    if (entity.Xscale != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nXScale: " + entity.Xscale;
+                    }
+                    if (entity.Yscale != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nYScale: " + entity.Yscale;
+                    }
+                    if (entity.Zscale != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nZScale: " + entity.Zscale;
+                    }
+                }
+                // <!-- vd3DFace  properties -->
+                if (entity._t === 10) { // vd3DFace
+                    if (entity.VertexList.Items.length > 0) {
+                        for (var d = 0; d < entity.VertexList.Items.length; d++) {
+                            InfoArea.value = InfoArea.value + "\r\nVertex " + d + ".  " + entity.VertexList.Items[d];
+                        }
+                    }
+                }
+                // <!-- vdPolyFace  properties -->
+                if (entity._t === 11) { // vdPolyFace
+                    if (entity.VertexList != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nVertexes count: " + entity.VertexList.Items.length;
+                    }
+                    if (entity.FaceList != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nFaceList count: " + entity.FaceList.Items.length;
+                    }
+                }
+                // <!-- vdAttribDef  properties -->
+                if (entity._t === 13) { // vdAttribDef
+                    if (entity.InsertionPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nInsertion Pt: " + entity.InsertionPoint;
+                    }
+                    if (entity.TagString != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nTagString: " + entity.TagString;
+                    }
+                    if (entity.TextString != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nTextString: " + entity.TextString;
+                    }
+                    if (entity.ValueString != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nValueString: " + entity.ValueString;
+                    }
+                    if (entity.Rotation != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nRotation: " + vdgeo.FixAngle(entity.Rotation) * 180.0 / vdgeo.PI + "°";
+                    }
+                    if (entity.Height != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHeight: " + entity.Height;
+                    }
+                    if (entity.Style != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nTextStyle: " + vdcanvas.GetDictItem(txt_stls, entity.Style).Name;
+                    }
+
+                }
+                // <!-- vdInfinityLine  properties -->
+                if (entity._t === 14) { // vdInfinityLine
+                    if (entity.BasePoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nBase pt: " + entity.BasePoint;
+                    }
+                    if (entity.Direction != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nDirection: " + entity.Direction;
+                    }
+                } 
+                // <!-- vdPoint  properties -->
+                if (entity._t === 15) { // vdPoint
+                    if (entity.InsertionPoint != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nInsertion Pt: " + entity.InsertionPoint;
+                    }
+                }
+                // <!-- vdViewport  properties -->
+                if (entity._t === 16) { // vdViewport
+                    if (entity.ViewCenter != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nViewCenter: " + entity.ViewCenter;
+                    }
+                    if (entity.ViewSize != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nViewSize: " +  entity.ViewSize;
+                    }
+                }
+                // <!-- vdPolyHatch  properties -->
+                if (entity._t === 17) { // vdPolyHatch
+                    if (entity.OutLines != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nOutLines: " + entity.OutLines.Items.length;
+                    }
+                    if (entity.HatchProperties.HatchScale != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHatchScale: " + entity.HatchProperties.HatchScale;
+                    }
+                    if (entity.HatchProperties.HatchAngle != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHatchAngle: " + entity.HatchProperties.HatchAngle;
+                    }
+                    if (entity.HatchProperties.HatchOrigin != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHatchOrigin: " + entity.HatchProperties.HatchOrigin;
+                    } 
+                    if (entity.HatchProperties.HatchPattern != null) {
+                        InfoArea.value = InfoArea.value + "" + "\r\nHatchPattern: " + vdcanvas.GetEntityItem(entity.HatchProperties.HatchPattern).Name;
+                    } 
+                }
+                // <!-- vdDimension  properties -->
+                if (entity._t === 24) { // vdDimension
+                        InfoArea.value = InfoArea.value + "" + "\r\nExploded";
+                }
+                // <!-- vdMText properties -->
+                if (entity._t === 25) { //vdMtext
+                    InfoArea.value = InfoArea.value + "" + "\r\nExploded: ";
+                    if (entity.Explode.Items.length > 0) {
+                        for (var d = 0; d < entity.Explode.Items.length; d++) {
+                            InfoArea.value = InfoArea.value + "\r\n  text " + d + ":  " + entity.Explode.Items[d].TextString;
+                        }
+                    }
+                }
+                // <!-- vdMultiline properties -->
+                if (entity._t === 27) { //vdMultiline
+                    InfoArea.value = InfoArea.value + "" + "\r\nExploded";
+                }
+                // <!-- vdLeader properties -->
+                if (entity._t === 29) { //vdLeader
+                    InfoArea.value = InfoArea.value + "" + "\r\nExploded";
+                }
+               
+                
+                
+                // <!-- Extended Data vdXproperties values -->
+                if (entity.XProperties != null) {
+                    if (entity.XProperties.Items.length > 0) {
+                        InfoArea.value = InfoArea.value + "" + "\r\n\r\n ---- Extended Data xProperties ---- ";
+                        for (var d = 0; d < entity.XProperties.Items.length; d++) {
+                            InfoArea.value = InfoArea.value + "\r\n"+ (d+1) + ".  " + entity.XProperties.Items[d].Name + " : " +entity.XProperties.Items[d].PropValue;
+                        }
+                    }
+                }
+                
+            }
+        }
+        
+        function _vdmousemove(e) {
+            if (e.mousebutton == 3) return; //right button
+            if (e.mousebutton == 0) {
+                e.target.canvas.style.cursor = "crosshair";
+                e.target.canvas.title = "";
+                var entity = e.entity;
+                if (entity != null && entity._t != undefined) {
+                    e.target.canvas.style.cursor = "pointer";
+                    e.target.canvas.title = e.target.Fig_codeToString(entity._t) + " : " + entity.HandleId.toString();
+                } else {
+                    InfoArea.value = "";
+                }
+                return;
+            }
+        }
+        
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('canvas', 400, 400);
+            document.getElementById('noJavascript').innerHTML = "";
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdmousemove = _vdmousemove;
+            vdcanvas.vdmousedown = _vdmousedown;
+            vdcanvas.SetDefaultTimeOutMilliseconds(400);
+
+            ExtendCancvas();
+            vdcanvas.vdprogress = _progress;
+            InfoArea.style.height = 'auto';
+
+            InfoArea.style.height  = canvas.height+'px';
+            vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS;
+            Open();
+        }
+        
+        function _progress(evt) {
+            if (evt.percent < 0) printInfo('info2', evt.Info);
+            else if (evt.percent >= 100) printInfo('info2', ' ');
+            else printInfo('info2', evt.Info + " " + evt.percent.toString() + "%");
+        }
+        this.printInfo = function(infoId, text) {
+
+            var info = document.getElementById(infoId);
+            if (info == undefined) return;
+            info.innerHTML = text;
+        }
+        
+        function Open() {
+            vdmanager.vdrawObject('canvas').SelectDocument('../Drawings/Example3Doc.vds');
+        }
+        function ExtendCancvas() {
+            var winW = 640, winH = 480;
+            if (document.body && document.body.offsetWidth) {
+                winW = document.body.offsetWidth;
+                winH = document.body.offsetHeight;
+            }
+            if (document.compatMode == 'CSS1Compat' &&
+                document.documentElement &&
+                document.documentElement.offsetWidth) {
+                winW = document.documentElement.offsetWidth;
+                winH = document.documentElement.offsetHeight;
+            }
+            if (window.innerWidth && window.innerHeight) {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+            }
+            vdmanager.vdrawObject('canvas').SetSize(winW - 30 - 350, winH - 110);
+        }
+      
+        
+    </script>
+
+    <style type="text/css">
+        .style6
+        {
+            width: 100px;
+            height: 29px;
+        }
+        #InfoArea
+        {
+            height: 218px;
+            width: 330px;
+        }
+    </style>
+</head>
+<body onload="vdrawInitPageLoad()">
+<table>
+<tr>
+            <td colspan="2"> This is a basic sample that is intended to demonstrate basic functionality of our web javascript solution.<br/>
+                        So in this sample a pre-build document is loaded that contains some 
+                vdFigures. The geometric properties of these plus the extended data 
+                (vdXProperties) and are shown in the text area on the right side when the user 
+                clicks on the object.<br/>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <canvas id='canvas'> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>
+            <td  valign=top>            
+                <textarea id="InfoArea" rows="20" cols="20">Text Area</textarea>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <label id="Label2">  Info :</label><label id="info2"></label>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

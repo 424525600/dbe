@@ -1,0 +1,255 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+	
+	<link href='http://fonts.googleapis.com/css?family=Raleway:400,800' rel='stylesheet' type='text/css'>
+	
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+
+    <script type="text/javascript">
+	var vdcanvas;
+	function vdrawInitPageLoad() {
+		document.getElementById("testBut").disabled = true;
+		vdmanager.AttachCanvas('display', 800, 200,[255,255,255]);
+		editText("noJavascript", "");
+		vdcanvas = vdmanager.vdrawObject('display');
+		vdcanvas.vdAfterOpenDocument =  _vdAfterOpenDocument;
+		vdcanvas.SelectDocument("benchFile.vds");
+		vdcanvas.SetEnableSelection(false);
+		vdcanvas.ActiveAction().DefaultActions = 0;
+    }
+	function _vdAfterOpenDocument(){
+		vdcanvas.zoomExtents();
+		document.getElementById("testBut").disabled = false;		 
+	}
+	var t, time1, time2, t1, t2;
+	var	counter = 0;
+	var animTmt;
+	var vdrawFrames, webGlFrames;
+	function benchmark(step, duration){
+		if (!time1) time1 = getTime();			
+
+		setSpheresPos(vdcanvas, duration);
+		vdcanvas.redraw();
+		counter ++;
+		
+		t = getTime();
+		t1 = t - time1;	
+		print( Math.floor(counter/t1*1000*100)/100, "cmdLineB" + step.toString());		
+		
+		if (t1 > duration) {			
+			time1 = null;
+			setSpheresPos(vdcanvas, duration);
+			setTimeout(function(){ vdcanvas.redraw();}, 0);
+			if(step == 1){						
+				vdrawFrames = counter / duration * 1000;
+				animTmt = setTimeout(function(){ beginTest(2, duration); }, 0);	
+				var vd = Math.floor(vdrawFrames * 100) / 100;
+				print( vd.toString(), "cmdLineB1");// + step.toString());
+			}
+			else{
+				webGlFrames = counter / duration * 1000;
+				testFinished(true);
+			}	
+			counter = 0;		
+			return
+		}		
+		animTmt = setTimeout(function(){ benchmark(step, duration); }, 0);
+	}
+	function beginTest(mode, duration){	
+		if (mode == 1){
+			vdcanvas.GetActiveLayout().RenderMode = vdConst.RENDERMODE_WIRE_2d;
+			vdcanvas.EnableWebGL(false);			
+		}
+		else if (mode == 2){
+			vdcanvas.EnableWebGL(true);
+			vdcanvas.SetBlockSize(10000);
+			vdcanvas.GetActiveLayout().RenderMode = vdConst.RENDERMODE_SHADE;
+			vdcanvas.redraw();
+			if (!vdcanvas.WebGLisActive()){
+				
+				testFinished(false);
+				return;
+			}			
+		}
+		benchmark(mode, duration);
+	}
+	function testFinished(success){
+		if (success){ 
+			var wb = Math.floor(webGlFrames * 100) / 100;
+			print( wb.toString(), "cmdLineB2");// + step.toString());
+			print( "The values shown here are frames per second. The higher the values the better. The values are not antagonistic. " +
+				"The first measures javascript execution speed. The second measures WebGL performance.", "cmdLineC");	
+		}
+		else{
+			print( "N/A", "cmdLineB2");
+			print( "The values shown here are frames per second. The higher the values the better. The values are not antagonistic. " +
+				"The first measures javascript execution speed. The second measures WebGL performance. WebGL is not supported in this hardware or is prevented from working.", "cmdLineC");
+		}
+	}
+	function setSpheresPos(vdcanvas, duration){
+		var entities = vdcanvas.GetActiveLayout().Entities; 
+		var element, x, y;
+		var t1 = getTime();
+		for (var d = 0; d < entities.Items.length; d++) {
+			element = vdcanvas.GetEntityItem(entities.Items[d]);
+			x = element.InsertionPoint[0];
+			y = getYValue(x, t1 - time1, 5000, duration - 5000) * 10;
+			
+			element.InsertionPoint = vdgeo.newpoint(x, y, 1);
+			vdcanvas.UpdateFig(element);
+		}
+	}
+	function getYValue(x, time, timeStart, timeEnd){
+		var xInit = 100 * time / timeStart;
+		var xEnd = xInit - 100;
+		if ((time < timeStart && x > xInit) || (time > timeStart && x < xEnd)) return 0;
+		
+		//var value = time / timeStart *  vdgeo.VD_TWOPI;
+		var fLen =  vdgeo.VD_TWOPI * 2;
+		var t = time / timeStart * fLen;
+		var value = x / 100 * fLen;
+
+		//print(x.toString() + " - " + xInit.toString());
+		
+		return Math.sin(value - t);
+	}
+	function getTime(){
+		var d = new Date();
+		return d.getTime();
+	}
+	var passes = 0;
+	var glbSum = 0;
+	var ignore = false;
+	function checkFrames(value, minValue, passNum){
+		if (ignore) return;
+		glbSum += value;
+		passes++;
+		
+		if (passes < passNum) return;
+		
+		var avFrame = glbSum / passes;
+		if (avFrame < minValue)
+		{
+			if (confirm("Your device either does not support WebGL or its hardware is not fast enough. This would result in a bad experience of this sample. Would you like to load a lighter drawing?"))
+				vdcanvas.SelectDocument("../Drawings/light-plan.vds");
+			ignore = true;
+			passes = 0;
+			print(Math.floor(avFrame * 100) / 100, "cmdLineB" + step.toString());
+		}
+	}
+	function editText(element, text) {
+        document.getElementById(element).innerHTML = text;
+    }
+	//Prints the passed string to the command line.
+	var prnt;
+	function print(text, id) {
+		document.getElementById(id).innerHTML = text;
+	}
+	</script>
+    <style type="text/css">
+.cmdLine 
+{	    	  
+	color: red;
+	font-family: monospace;
+	font-size: xx-large;
+}
+.title {
+    color: darkred;
+    font-family: 'Raleway', sans-serif;
+    font-size: x-large;
+    font-weight: 800;
+}
+#cmdLineC{
+	font-family: 'Raleway', sans-serif;
+}
+table{
+	max-width:800px;
+}
+#cmdLineC
+{
+    background-color: rgb(231, 255, 231);
+}
+button {
+	-moz-box-shadow:inset 0px 1px 0px 0px #9acc85;
+	-webkit-box-shadow:inset 0px 1px 0px 0px #9acc85;
+	box-shadow:inset 0px 1px 0px 0px #9acc85;
+	background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #74ad5a), color-stop(1, #68a54b));
+	background:-moz-linear-gradient(top, #74ad5a 5%, #68a54b 100%);
+	background:-webkit-linear-gradient(top, #74ad5a 5%, #68a54b 100%);
+	background:-o-linear-gradient(top, #74ad5a 5%, #68a54b 100%);
+	background:-ms-linear-gradient(top, #74ad5a 5%, #68a54b 100%);
+	background:linear-gradient(to bottom, #74ad5a 5%, #68a54b 100%);
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#74ad5a', endColorstr='#68a54b',GradientType=0);
+	background-color:#74ad5a;
+	border:1px solid #3b6e22;
+	display:inline-block;
+	cursor:pointer;
+	color:#ffffff;
+	font-family:Arial;
+	font-size:13px;
+	font-weight:bold;
+	padding:6px 12px;
+	text-decoration:none;
+}
+button:hover {
+	background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #68a54b), color-stop(1, #74ad5a));
+	background:-moz-linear-gradient(top, #68a54b 5%, #74ad5a 100%);
+	background:-webkit-linear-gradient(top, #68a54b 5%, #74ad5a 100%);
+	background:-o-linear-gradient(top, #68a54b 5%, #74ad5a 100%);
+	background:-ms-linear-gradient(top, #68a54b 5%, #74ad5a 100%);
+	background:linear-gradient(to bottom, #68a54b 5%, #74ad5a 100%);
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#68a54b', endColorstr='#74ad5a',GradientType=0);
+	background-color:#68a54b;
+}
+button:active {
+	position:relative;
+	top:1px;
+}
+
+	</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+    <table align="center">
+		<tr>
+			<td>
+				<canvas id='display' tabindex="1"> </canvas>
+				<div id='noJavascript'>
+					<div style="height: 400px; width: 500px; background-color:#b0c4de; text-align: center; display: table-cell; vertical-align: middle;">                    
+					The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+					</div>
+				</div>
+			</td>
+		</tr>
+	</table>
+	<table width="800px" align="center">
+		<tr>
+		    <td >
+		        <div id="cmdLineA1" style="text-align:center" class="title">Vdraw JS engine</div>
+		    </td>
+			<td width="400px" style="text-align:center">
+				<button id="testBut" onclick="beginTest(1, 10000)">Begin Test</button>
+			</td>
+			<td>
+				<div id="cmdLineA2" style="text-align:center" class="title">WebGL engine</div>
+			</td>
+		</tr>
+		<tr>
+			<td>	
+				<div id="cmdLineB1" style="text-align:left" class="cmdLine"></div>
+			</td>
+			<td></td>
+			<td>
+				<div id="cmdLineB2" style="text-align:left" class="cmdLine"></div>
+			</td>
+		</tr>
+		<tr>			
+			<td colspan="3">
+				<div id="cmdLineC" style="text-align:center"></div>
+			</td>
+		</tr>
+    </table>
+</body>
+</html>

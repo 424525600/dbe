@@ -1,0 +1,376 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+
+    <script type="text/javascript">
+        //In this function we do all the necessary initializations.
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('display', 200, 50);
+            //document.getElementById('noJavascript').innerHTML = "";
+            editText("noJavascript", "");
+            var vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdPrompt = _onprompt;
+
+            vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS + vdConst.DEFAULT_ROTATE3D;
+            ExtendCancvas();
+            vdcanvas.SelectDocument("../Drawings/vdraw-logo.vds");
+            print("Choose your action, set the preferences and click on 'Go' to begin the action");
+        }
+        //Here we expand the canvas to fill the container.
+        function ExtendCancvas() {
+            var winW = 640, winH = 480;
+            if (document.body && document.body.offsetWidth) {
+                winW = document.body.offsetWidth;
+                winH = document.body.offsetHeight;
+            }
+            if (document.compatMode == 'CSS1Compat' &&
+                document.documentElement &&
+                document.documentElement.offsetWidth) {
+                winW = document.documentElement.offsetWidth;
+                winH = document.documentElement.offsetHeight;
+            }
+            if (window.innerWidth && window.innerHeight) {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+            }
+            vdmanager.vdrawObject('display').SetSize(winW - 30 - 150, winH - 185);
+        }
+        /////////The main function of the sample. All three actions begin through here./////////
+        function performAction() {
+            var vdcanvas = vdmanager.vdrawObject('display');
+            //Getting the entities to be used for the command.
+            var entities = getEntities();
+            //Getting the reference point (or null in order for the user to pick it on screen).
+            var from = getFrom();
+            //Getting the second parameter. Depending on the action it can be a point or a number.
+            var to = getTo();
+
+            if (actionType == 0) {
+                //Move command is called. The entities parameter must be an array of vdraw items. The from parameter must be
+                //a point object, and to must be a point as well. All parameters can be set to null and the use will be
+                //prompted to set them on screen.
+                vdcanvas.CmdMove(entities, from, to);
+            }
+            else if (actionType == 1) {
+            //Scale command is called. The entities parameter must be an array as in CmdMove. The from parameter must be
+            //a point object, and to must be a numeric value. All parameters can be set to null and the use will be
+            //prompted to set them on screen.
+                vdcanvas.CmdScale(entities, from, to);
+            }
+            else if (actionType == 2) {
+                //Angle is converted from degrees to radians and the rotate command is called.
+                var toInRads = vdgeo.DegreesToRadians(to);
+                //Rotate command is called. The entities parameter must be an array as in CmdMove. The from parameter must be
+                //a point object, and to must be a numeric value. All parameters can be set to null and the use will be
+                //prompted to set them on screen.
+                vdcanvas.CmdRotate(entities, from, toInRads);
+            }
+        }
+        //All other functions are used for the sake of this sample project.
+
+        //Fired every time a message is prompted from the library.
+        function _onprompt(sender, text){
+            print(text);
+        }
+        var actionType = 0;
+        //Called whenever the use changes the active action.
+        function prepareAction(type) {
+            actionType = parseInt(type);
+            //Move action set as active.
+            if (actionType == 0) {
+                editText("actionSelection", "Move what?");
+                editText("actionFrom", "Move from...");
+                editText("actionTo", "Move to...");
+                document.getElementById("inputTo").value = "1, 1, 1";
+                document.getElementById("control").style.backgroundColor = "#ffab23";
+            }
+            //Scale action set as active.
+            else if (actionType == 1) {
+                editText("actionSelection", "Scale what?");
+                editText("actionFrom", "Scale at...");
+                editText("actionTo", "Scale factor...");
+                document.getElementById("inputTo").value = "2";
+                document.getElementById("control").style.backgroundColor = "#9fff23";
+            }
+            //Rotate action set as active.
+            else if (actionType == 2) {
+                editText("actionSelection", "Rotate what?");
+                editText("actionFrom", "Rotate around...");
+                editText("actionTo", "Rotation angles...");
+                document.getElementById("inputTo").value = "90";
+                document.getElementById("control").style.backgroundColor = "#23beff";
+            }
+        }        
+        function editText(element, text) {
+            document.getElementById(element).innerHTML = text;
+        }
+        //Used in order to return the selected entities of null.
+        function getEntities() {
+            //The option defining if the whole document will be used for the action.
+            var option = parseInt(document.getElementById("selectionDropD").value);
+            //The user will be prompted to selecte entities.
+            if (option == 0) return null;
+            //All entities of document will be used.
+            else if (option == 1) {
+                var vdcanvas = vdmanager.vdrawObject("display");
+                var handles = vdcanvas.GetActiveLayout().Entities;
+                var entities = [];
+                //All entities are places in an array. It is also possible to include only a few of them in the array.
+                for (var k = 0; k < handles.Items.length; k++) {
+                    var fig = vdcanvas.GetEntityItem(handles.Items[k]);
+                    entities.push(fig);
+                }
+                return entities;
+            }
+            return null;
+        }
+        //Getting the X, Y, Z values of the set string.
+        function parsePoint(text) {
+            var values = text.split(",");
+            if (!values || values.length < 2 || values.length > 3) return null;
+            var x = parseFloat(values[0]);
+            var y = parseFloat(values[1]);
+            var z = 0;
+            if (values.length == 3)
+                z = parseFloat(values[2]);
+            return [x, y, z];
+        }
+        //Getting the reference point from the form.
+        function getFrom() {
+            if (document.getElementById("fromSelect").value == "0") return null;
+            var value = document.getElementById("inputFrom").value;
+            return parsePoint(value);
+        }
+        //Getting the second parameter from the form. It can be a point or a number.
+        function getTo() {
+            if (document.getElementById("toSelect").value == "0") return null;
+            var value = document.getElementById("inputTo").value;
+            if (actionType == 0)
+                return parsePoint(value);
+            else
+                return parseFloat(value);
+        }
+        //Shows or hides the reference point textbox.
+        function fromSelectChanged(value) {
+            var option = parseInt(value);
+            if (option == 0)
+                document.getElementById("inputFrom").style.width = "0px";
+            if (option == 1)
+                document.getElementById("inputFrom").style.width = "90px";
+        }
+        //Shows or hides the second parameter textbox.
+        function toSelectChanged(value) {
+            var option = parseInt(value);
+            if (option == 0)
+                document.getElementById("inputTo").style.width = "0px";
+            if (option == 1)
+                document.getElementById("inputTo").style.width = "90px";
+        }
+        //Prints the passed string to the command line.
+        function print(text) {
+            if (!text || text == ""){
+                document.getElementById("cmdLine").style.height = "0px";
+                //document.getElementById("cmdLine").innerHTML = null;
+                editText("cmdLine", "");
+            }
+            else
+            {            
+                document.getElementById("cmdLine").style.height = "25px";
+                document.getElementById("cmdLine").innerHTML = text;
+            }
+        }
+
+    </script>
+    <style type="text/css">
+	.style1 {
+		width: 100px;
+		height: 29px;
+		display: inline;
+	}
+	input{
+		size: 6;
+		text-align: center;
+		transition: width 0.5s;		
+	}
+	div#cmdLine
+	{
+	    border: 1px solid;
+	    border-color:#000000;
+	    background-color:#ffffff;
+	}
+	.cmdLine 
+	{	    
+	    transition: height 0.5s;
+	    overflow: hidden;    
+	}
+	.control{
+		-webkit-border-top-left-radius:5px;
+		-moz-border-radius-topleft:5px;
+		border-top-left-radius:5px;
+		-webkit-border-top-right-radius:5px;
+		-moz-border-radius-topright:5px;
+		border-top-right-radius:5px;
+		-webkit-border-bottom-right-radius:5px;
+		-moz-border-radius-bottomright:5px;
+		border-bottom-right-radius:5px;
+		-webkit-border-bottom-left-radius:5px;
+		-moz-border-radius-bottomleft:5px;
+		border-bottom-left-radius:5px;
+		padding:10px;
+	}
+	.go{
+		width:40px;
+		height:30px;
+		color:ffffff;
+		-webkit-border-top-left-radius:5px;
+		-moz-border-radius-topleft:5px;
+		border-top-left-radius:5px;
+		-webkit-border-top-right-radius:5px;
+		-moz-border-radius-topright:5px;
+		border-top-right-radius:5px;
+		-webkit-border-bottom-right-radius:5px;
+		-moz-border-radius-bottomright:5px;
+		border-bottom-right-radius:5px;
+		-webkit-border-bottom-left-radius:5px;
+		-moz-border-radius-bottomleft:5px;
+		border-bottom-left-radius:5px;
+
+		background-color:green;
+	}
+	.button {
+		-moz-box-shadow:inset 0px 1px 0px 0px #fff6af;
+		-webkit-box-shadow:inset 0px 1px 0px 0px #fff6af;
+		box-shadow:inset 0px 1px 0px 0px #fff6af;
+		
+		
+		-webkit-border-top-left-radius:15px;
+		-moz-border-radius-topleft:15px;
+		border-top-left-radius:15px;
+		-webkit-border-top-right-radius:15px;
+		-moz-border-radius-topright:15px;
+		border-top-right-radius:15px;
+		-webkit-border-bottom-right-radius:0px;
+		-moz-border-radius-bottomright:0px;
+		border-bottom-right-radius:0px;
+		-webkit-border-bottom-left-radius:0px;
+		-moz-border-radius-bottomleft:0px;
+		border-bottom-left-radius:0px;
+		text-indent:0;
+		border:1px solid #ffaa22;
+		display:inline-block;
+		color:#333333;
+		font-size:15px;
+		font-weight:bold;
+		font-style:normal;
+		height:35px;
+		line-height:35px;
+		width:86px;
+		text-decoration:none;
+		text-align:center;
+		text-shadow:1px 1px 0px #ffee66;
+	}
+	.button:hover {
+		border:5px;
+	}.button:active {
+		position:relative;
+		top:1px;
+	}
+	.move
+	{
+	    background-color:#ffab23;
+	    background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #ffec64), color-stop(1, #ffab23) );
+		background:-moz-linear-gradient( center top, #ffec64 5%, #ffab23 100% );
+		filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffec64', endColorstr='#ffab23');
+	}
+	.scale
+	{
+	    background-color:#9fff23;
+	    background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #dbfcb0), color-stop(1, #9fff23) );
+		background:-moz-linear-gradient( center top, #dbfcb0 5%, #9fff23 100% );
+		filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#dbfcb0', endColorstr='#9fff23');
+	}
+	.rotate
+	{
+	    background-color:#23beff;
+	    background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #cef0fe), color-stop(1, #23beff) );
+		background:-moz-linear-gradient( center top, #cef0fe 5%, #23beff 100% );
+		filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#cef0fe', endColorstr='#23beff');
+	}
+	</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+    <table align="center">
+        <tr>
+            <td>
+                <button class="button move" onclick="prepareAction(0)">
+                    Move</button>
+            </td>
+            <td>
+                <button class="button scale" onclick="prepareAction(1)">
+                    Scale </button> 
+            </td>
+			<td>
+                <button class="button rotate" onclick="prepareAction(2)">
+                    Rotate </button> 
+            </td>
+		</tr>
+	</table>
+	<table id="control" class="control" align="center" style="background-color:#ffab23;">
+		<tr>
+			<td>
+				<div id="actionSelection" class="style1">Move what?</div>
+				<select id="selectionDropD">
+					<option value="0">Select on screen</option>
+					<option value="1">Whole document</option>
+				</select>
+			</td>
+			<td>
+				<div id="actionFrom" class="style1">Move from...</div>
+				<select id="fromSelect" onchange="fromSelectChanged(value)">
+					<option value="0">Select on screen</option>
+					<option value="1">Set fixed</option>
+				</select>
+				<input id="inputFrom" size="6" value="0, 0, 0" style="width:0px;"></input>
+			</td>
+			<td>
+				<div id="actionTo" class="style1">Move to...</div>
+				<select id="toSelect" onchange="toSelectChanged(value)">
+					<option value="0">Select on screen</option>
+					<option value="1">Set fixed</option>
+				</select>
+				<input id="inputTo" size="6" value="1, 1, 1" style="width:0px;"></input>				
+			</td>
+			<td>
+				<button class="go" onclick="performAction()">Go</button>
+			</td>
+		</tr>
+		<tr>
+		    <td colspan=4 class="cmdLine">
+		        <div id="cmdLine" style="height:0px; text-align:center" class="cmdLine"></div>
+		    </td>
+		</tr>
+    </table>
+    <table align="center">
+        <tr>
+			<td>
+				<div>
+				
+				</div>
+			</td>
+            <td>
+                <canvas id='display' tabindex="1"> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de; text-align: center; display: table-cell; vertical-align: middle;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>			
+        </tr>
+    </table>
+</body>
+</html>

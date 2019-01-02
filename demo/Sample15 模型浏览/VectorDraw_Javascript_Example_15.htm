@@ -1,0 +1,640 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+    <script type="text/javascript" src='walker.js'></script>
+	
+    <script type="text/javascript">
+        var vdcanvas;
+        //In this function we do all the necessary initializations.
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('display', 200, 50);
+            editText("noJavascript", "");
+            vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdPrompt = _onprompt;
+			vdcanvas.vdAfterOpenDocument =  _vdAfterOpenDocument;
+			vdcanvas.vddblclick = _vddblclick;
+			vdcanvas.vdmousedown = _vdmousedown;
+			vdcanvas.vdmouseup = _vdmouseup;
+			vdcanvas.vdmousemove = _mouseNavigate;
+			vdcanvas.vdmousewheel = _vdmousewheel;
+			vdcanvas.vdtouchMove = _vdtouchMove;
+			document.getElementById("helpButton").addEventListener("mousedown", showHelpMouse);
+			document.getElementById("helpButton").addEventListener("touchstart", showHelpTouch);
+			document.getElementById("demoWalk").addEventListener("mousedown", demoWalk);
+			document.getElementById("demoWalk").addEventListener("touchstart", demoWalk);
+			vdcanvas.SetEnableSelection(false);
+			vdcanvas.EnableWebGL(true);
+			vdcanvas.SetBlockSize(10000);			
+
+			vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_SCROLL;
+            ExtendCanvas();
+            vdcanvas.SelectDocument("../Drawings/plan.vds");
+        }
+        //Initiates the walk action. The action is executed using the walker.js file. The only vdraw function is LookAt().
+        var demoWalker;
+        function demoWalk(e) {
+            if (zooming) return;            
+            if (!demoWalker) {
+                demoWalker = new walker(vdcanvas, getFromXProperty("walkline"));
+                demoWalker.finished = walkFinished;
+            }
+            if (demoWalker.walking) return;
+            var origin = vdcanvas.ViewToWorld(vdgeo.newpoint(0, 0, 0));
+            var pline = getFromXProperty("walkline");
+            setTopView(origin, pline.VertexList.Items[0], topView);
+            demoWalker.start();                         
+        }
+        function walkFinished(){
+            var origin = vdcanvas.ViewToWorld(vdgeo.newpoint(0, 0, 0));
+            cP[2] = topHeight;
+            setTopView(origin, cP, false);
+        }
+        var tchMvTmt;
+        //This event handler is called only when using TWO fingers. If only one finger is used the vdmousemove is fired instead.
+		function _vdtouchMove(e){
+		    if (zooming) return;
+		    if (demoWalker) {
+		        demoWalker.stop();
+		        demoWalker.reset();
+		    }
+			var y = (e.Pos1[1] + e.Pos2[1])/2.0;
+			var yPrev = (e.PrevPos1[1] + e.PrevPos2[1])/2.0;
+			var dy = y - yPrev;
+			clearTimeout(tchMvTmt);
+			//Using the following command the camera view goes upwards or downwards.
+			elevateView(dy);
+		}
+		function _vdmousewheel(e){
+		    if (zooming) return;
+		    if (demoWalker) {
+		        demoWalker.stop();
+		        demoWalker.reset();
+		    }
+			dy = e.Delta;
+			//Using elevateView the camera view goes upwards or downwards.
+			if (dy < 1) elevateView(speed);
+			else elevateView(-speed);
+		}
+		var prevPos, mousedown;
+		function _vdmousedown(e){
+			prevPos = [e.xPix, e.yPix];
+			mousedown = true;
+			if (demoWalker) {
+			    demoWalker.stop();
+			    demoWalker.reset();
+			}
+		}		
+		function _vdmouseup(e){
+			mousedown = false;
+		}
+		var navigateTmt;
+		function _mouseNavigate(e){
+			if (topView || zooming || !mousedown) return;
+			if (!prevPos) prevPos = [e.xPix, e.yPix];
+			var movementX = e.xPix - prevPos[0];
+			var movementY = e.yPix - prevPos[1];
+		
+			prevPos = [e.xPix, e.yPix];
+			clearTimeout(navigateTmt);
+			if (Math.abs(movementX) > Math.abs(movementY))
+			    //Rotate the camera arround.
+			    navigateTmt = rotateView(movementX, 0);
+            else 
+			    //Move the camera forward/backwards.
+				navigateTmt = moveView(movementY);
+		}
+		function _vddblclick(e){
+			var origin = vdcanvas.ViewToWorld(vdgeo.newpoint(0,0,0));
+			toggleView(origin, vdgeo.newpoint(e.x, e.y, groundHeight));        }
+		//Convert a point from world coordinates to view coordinates.
+		function world2view(pt){
+			return vdcanvas.WorldToView(pt)
+		}
+		var globalPt;
+		//Move from ground view to top view and vice versa.
+		function toggleView(origin, pt) {
+		    if (demoWalker && demoWalker.walking) return;
+		    if (zooming) return;
+			if (topView){
+				grndPt = null;
+				setGroundView(origin, pt);
+				globalPt = [pt[0], pt[1], topHeight];
+			}
+			else
+				setTopView(origin, vdgeo.newpoint(origin[0], origin[1], topHeight));
+        }
+		//Get a factor relevant to the depth of the view.
+		function getDepthFactor(scale){
+			var near = vdcanvas.ActiveRender().graphics.zNear;
+			var far = vdcanvas.ActiveRender().graphics.zFar;
+			var zDepth = far - near;
+			var factor = zDepth * scale;
+			
+			return factor;
+		}
+		
+		//Get speed relevant to the distance of the target.
+		function getSpeed(dist, maxDist){
+			var factor = 1.0;
+			var y;			
+			var x = (dist/(maxDist/2.0) -1) * factor;			
+			
+			var b = 0.5;
+			var c = 0.7;
+            var a = 1 / Math.sqrt(2 * Math.PI * c*c);
+			
+			var numerator = (x-b)*(x-b);
+            var denominator = 2 * c*c;
+
+            y = a * Math.pow(Math.E, -numerator / denominator) * 15;			
+	
+			return y * speed;
+		}
+		var zooming = false;
+		var timer;
+		var abort = false;
+		var maxDist1 = 0;
+		var maxDist2 = 0;
+		//Animate moving from one point to the other. This function is used when moving from top view to ground view and vice versa.
+		function moveTowardsAnim(current, to, init) {
+		    if (abort) {
+		        abort = false;
+		        return;
+		    }
+			var d, dist1, dist2, v, newDest, speed1, speed2, yVec;
+			d = new Date();
+			timer = d.getTime();
+
+			zooming = true;
+			//This is the distance in 2D, the z is ignored.
+			dist1 = vdgeo.Distance2D(current, to);
+			maxDist1 = Math.max(maxDist1, dist1);		
+			//This is the distance in 3D, the z value is taken into consideration	
+			dist2 = vdgeo.Distance3D(vdgeo.newpoint(to[0], to[1], current[2]), to);
+			maxDist2 = Math.max(maxDist2, dist2);
+
+			speed1 = getSpeed(dist1, maxDist1);
+			speed2 = getSpeed(dist2, maxDist2);
+				
+			yVec = 0;
+			if (!init){
+				if (!topView) yVec = (topHeight - dist2) / topHeight;
+				else yVec = 1 - (topHeight - dist2) / topHeight;
+			}
+			yVec = Math.max(0, Math.min(1, yVec));
+			if (dist1 > speed1 && (!topView || init)){				
+				v = vdgeo.VectorDirection(current, vdgeo.newpoint(to[0], to[1], current[2]));
+				newDest = vdgeo.newpoint(current[0] + v[0]*speed1, current[1] + v[1]*speed1, current[2] + v[2]*speed1);
+
+				vdcanvas.LookAt(newDest, vdgeo.newpoint(newDest[0], newDest[1], newDest[2] - 1), 0);
+				setTimeout(function(){moveTowardsAnim(newDest, to, init);}, 0);
+			}
+			else if(dist2 > speed2){			
+				v = vdgeo.VectorDirection(current, to);
+				newDest = vdgeo.newpoint(current[0] + v[0] * speed2, current[1] + v[1] * speed2, current[2] + v[2] * speed2);
+
+				vdcanvas.LookAt(newDest, vdgeo.newpoint(newDest[0], newDest[1] + yVec, newDest[2] - 1 + yVec), 0);
+				setTimeout(function(){moveTowardsAnim(newDest, to, init);}, 0);
+			}
+			else {
+			    if (topView) {
+			        newDest = vdgeo.newpoint(to[0], to[1], to[2] - 1);
+			        vdcanvas.LookAt(to, newDest, 0);
+			    }
+			    else {
+			        newDest = vdgeo.newpoint(to[0], to[1] + 1, to[2]);
+			        vdcanvas.LookAt(to, newDest, 0);
+			    }
+				zooming = false;
+				maxDist1 = 0;
+				maxDist2 = 0;
+			}
+				
+			d = new Date();
+			var timer2 = d.getTime();			
+			checkFrames(1000.0/(timer2 - timer), 10, 10);
+		}
+		var topView = false;
+		//Set the camera to top view.
+		function setTopView(origin, pt, init){	
+			vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_SCROLL;
+			topView = true;
+			prevPos = null;
+
+			moveTowardsAnim(origin, pt, init);
+}
+		//Set the camera to ground view.
+		function setGroundView(origin, pt){
+			vdcanvas.ActiveAction().DefaultActions = null;
+			topView = false;
+	
+			moveTowardsAnim(origin, pt);
+        }
+		//Convert a vector from view coordinates to world coordinates.
+		function v2wVector(v, normalize){
+			var layout = vdcanvas.GetActiveLayout();
+			if (!layout) return null;
+			var world2view = layout.World2ViewMatrix;
+			var v2w = vdgeo.matrixGetInversion(world2view);
+			var newV = vdgeo.matrixtransformVector(v2w, v[0], v[1], v[2], normalize);			
+			return newV;
+        }
+		//Rotate the camera to the left and to the right.
+        function rotateView(dx, dy) {	
+			var layout = vdcanvas.GetActiveLayout();
+			if (!layout) return null;			
+			
+			var world2view = layout.World2ViewMatrix;
+			//var horAngle = dx / vdcanvas.ActiveRender().width * vdgeo.PI;
+			var horAngle = dx / vdcanvas.canvas.width * vdgeo.PI;
+			var verAngle = dy / vdcanvas.canvas.height * vdgeo.PI;
+
+			return setTimeout(function() { vdcanvas.RotateView(horAngle, verAngle); }, 0);        }
+		//Get the aproppriate step for the move of the camera.
+		function getMoveStep(dy){
+		    return Math.abs(dy)/2.0;
+		}
+		var speed;
+		var grndPt = null;
+		//Move the camera view forward and backwards.
+		function moveView(dy) {
+		    var layout = vdcanvas.GetActiveLayout();
+		    if (!layout) return;
+			if (Math.abs(dy) < 1) return;
+			var step = getMoveStep(dy) * - dy / Math.abs(dy);
+
+			return setTimeout(function() { vdcanvas.MoveView(0, 0, step); }, 0);			        }
+        //Move the camera position upwards or downwards.
+        var elvtTmt;
+        function elevateView(dz) {
+		    if (zooming) return;
+
+		    clearTimeout(elvtTmt);
+		    if(topView) elvtTmt = setTimeout(function() { vdcanvas.MoveView(0, 0, -dz*2); });
+		    else elvtTmt = setTimeout(function() { vdcanvas.MoveView(0, dz, 0); });
+		    if (topView) topHeight = getCameraHeight();
+		    else groundHeight   = getCameraHeight(); 
+		    return;		        }
+		//Get current camera height.
+		function getCameraHeight(){
+			var origin = vdcanvas.ViewToWorld(vdgeo.newpoint(0,0,-1));
+			return origin[2];
+		}
+
+		var topHeight = 200.0;
+		var groundHeight = 70;
+		var cP;
+		//Some needed initializations after the document is opened. 
+		function _vdAfterOpenDocument(e){
+			vdcanvas.GetActiveLayout().RenderMode = vdConst.RENDERMODE_RENDER;
+			
+			var layout = vdcanvas.GetActiveLayout();
+            if (!layout) return;
+            
+            layout.PerspectiveMod = 1;
+
+            vdcanvas.SetStdView(vdConst.StdView_TOP);
+			topHeight = getCameraHeight();
+			var ext = vdcanvas.GetExtents();
+			cP = vdgeo.newpoint((ext[0] + ext[3]) / 2.0, (ext[1] + ext[4]) / 2.0, topHeight);			
+			speed = topHeight / 100;
+
+			var origin = vdgeo.newpoint(0, 0, topHeight*1.5); //vdcanvas.ViewToWorld(vdgeo.newpoint(0,0,0));
+			setTopView(origin, cP, true);
+		}
+        //Here we expand the canvas to fill the container.
+        function ExtendCanvas() {
+            var winW = 640, winH = 480;
+            if (document.body && document.body.offsetWidth) {
+                winW = document.body.offsetWidth;
+                winH = document.body.offsetHeight;
+            }
+            if (document.compatMode == 'CSS1Compat' &&
+                document.documentElement &&
+                document.documentElement.offsetWidth) {
+                winW = document.documentElement.offsetWidth;
+                winH = document.documentElement.offsetHeight;
+            }
+            if (window.innerWidth && window.innerHeight) {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+            }
+            vdmanager.vdrawObject('display').SetSize(winW - 30, winH - 100);
+        }
+       
+        //Fired every time a message is prompted from the library.
+        function _onprompt(sender, text){
+            print(text);
+        }        
+        function editText(element, text) {
+            document.getElementById(element).innerHTML = text;
+        }
+		var passes = 0;
+		var glbSum = 0;
+		var ignore = false;
+		//Check if the frame rate drops under a certain level.
+        function checkFrames(value, minValue, passNum){
+			if (ignore) return;
+			glbSum += value;
+			passes++;
+			
+			if (passes < passNum) return;
+			
+			var avFrame = glbSum/passes;
+			if (avFrame < minValue)
+			{
+			    if (confirm("Your device either does not support WebGL or its hardware is not fast enough. This would result in a bad experience of this sample. Would you like to load a lighter drawing?")) {
+			        vdcanvas.SelectDocument("../Drawings/light-plan.vds");
+			        abort = true;
+			    }
+				ignore = true;
+				passes = 0;
+			}
+		}
+		
+        //Prints the passed string to the command line.
+		var prnt;
+        function print(text, mlseconds) {
+			clearTimeout(prnt);
+			if (!mlseconds) mlseconds = 4000;
+            if (!text || text == ""){
+                document.getElementById("cmdLine").style.height = "0px";
+                editText("cmdLine", "");
+            }
+            else
+            {            
+                document.getElementById("cmdLine").style.height = "40px";
+                document.getElementById("cmdLine").innerHTML = text;
+            }
+			prnt = setTimeout(function(){ 
+					document.getElementById("cmdLine").style.height = "0px";
+					editText("cmdLine", ""); 
+				}, mlseconds);
+        }        
+        function showHelpMouse(e) {
+            showHelp(e, false);
+        }
+        function showHelpTouch(e) {
+            showHelp(e, true);
+        }
+        var isTouch = false;
+        function showHelp(e, touch) {
+            if (!isTouch)
+                isTouch = touch;
+            hideHelp();
+            if (isTouch) {
+                if (topView)
+                    document.getElementById("helpTouchTop").style.display = "block";
+                else
+                    document.getElementById("helpTouchGround").style.display = "block";
+            }
+            else {
+                if (topView)
+                    document.getElementById("helpMouseTop").style.display = "block";
+                else
+                    document.getElementById("helpMouseGround").style.display = "block";
+            }
+        }
+        function hideHelp() {
+            document.getElementById("helpTouchTop").style.display = "none";
+            document.getElementById("helpTouchGround").style.display = "none";
+            document.getElementById("helpMouseTop").style.display = "none";
+            document.getElementById("helpMouseGround").style.display = "none";
+        }
+        //Returns the entity that contains the passed xProperty value.
+        function getFromXProperty(propValue) {
+            var vdraw = vdcanvas;
+
+            var layout = vdraw.GetActiveLayout();
+            if (!layout) return;
+            var entities = layout.Entities;
+            if (entities == undefined || entities.Items == undefined || entities.Items.length == undefined) return null;
+            for (var k = 0; k < entities.Items.length; k++) {
+                var fig = vdraw.GetEntityItem(entities.Items[k]);
+                if (fig.XProperties == undefined) continue;
+                if (fig.XProperties.Items[0].PropValue == propValue)
+                    return fig;
+            }
+            return null;
+        }
+
+    </script>
+    <style type="text/css">
+		div#cmdLine
+		{
+			border: 1px solid;
+			border-color:#000000;
+			background-color:#ffffff;
+		}
+		.cmdLine 
+		{	    
+			transition: height 0.5s;
+			overflow: hidden;    
+		}
+		.close
+		{
+		    margin-right: 10px;
+            margin-top: 10px;
+        }
+		.close:hover 
+		{
+		    -webkit-transition: all 50ms ease-in-out;
+            -moz-transition: all 50ms ease-in-out;
+            -ms-transition: all 50ms ease-in-out;
+            -o-transition: all 50ms ease-in-out;
+            transition: all 50ms ease-in-out;
+		    
+            -moz-transform: scale(0.9);
+            -webkit-transform: scale(0.9);
+            -o-transform: scale(0.9);
+            -ms-transform: scale(0.9);
+            transform: scale(0.9);            
+		}
+		.close:active 
+		{		
+		    -webkit-transition: all 50ms ease-in-out;
+            -moz-transition: all 50ms ease-in-out;
+            -ms-transition: all 50ms ease-in-out;
+            -o-transition: all 50ms ease-in-out;
+            transition: all 50ms ease-in-out;
+		    
+            -moz-transform: scale(0.8);
+            -webkit-transform: scale(0.8);
+            -o-transform: scale(0.8);
+            -ms-transform: scale(0.8);
+            transform: scale(0.8); 
+		}
+		.help
+		{
+		    display:none;
+            position: fixed;
+            z-index: 100;
+            background-color: white;
+            margin: 0 0 0 -200px;
+            top: 10%;
+            left: 50%;
+            width: 400px;
+            border-color: black;
+            border-style: solid;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 5px 5px 10px rgba(25,25,25,0.5);
+		}
+
+		.controlsButton {
+	        -moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
+	        -webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
+	        box-shadow:inset 0px 1px 0px 0px #ffffff;
+	        background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #ededed), color-stop(1, #dfdfdf));
+	        background:-moz-linear-gradient(top, #ededed 5%, #dfdfdf 100%);
+	        background:-webkit-linear-gradient(top, #ededed 5%, #dfdfdf 100%);
+	        background:-o-linear-gradient(top, #ededed 5%, #dfdfdf 100%);
+	        background:-ms-linear-gradient(top, #ededed 5%, #dfdfdf 100%);
+	        background:linear-gradient(to bottom, #ededed 5%, #dfdfdf 100%);
+	        filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ededed', endColorstr='#dfdfdf',GradientType=0);
+	        background-color:#ededed;
+	        -moz-border-radius:6px;
+	        -webkit-border-radius:6px;
+	        border-radius:6px;
+	        border:1px solid #dcdcdc;
+	        display:inline-block;
+	        cursor:pointer;
+	        color:#777777;
+	        font-family:Arial;
+	        font-size:15px;
+	        font-weight:bold;
+	        padding:6px 24px;
+	        text-decoration:none;
+	        text-shadow:0px 1px 0px #ffffff;
+        }
+        .controlsButton:hover {
+	        background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #dfdfdf), color-stop(1, #ededed));
+	        background:-moz-linear-gradient(top, #dfdfdf 5%, #ededed 100%);
+	        background:-webkit-linear-gradient(top, #dfdfdf 5%, #ededed 100%);
+	        background:-o-linear-gradient(top, #dfdfdf 5%, #ededed 100%);
+	        background:-ms-linear-gradient(top, #dfdfdf 5%, #ededed 100%);
+	        background:linear-gradient(to bottom, #dfdfdf 5%, #ededed 100%);
+	        filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#dfdfdf', endColorstr='#ededed',GradientType=0);
+	        background-color:#dfdfdf;
+        }
+        .controlsButton:active {
+	        position:relative;
+	        top:1px;
+        }  		
+	</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+ 
+    <table align="center">
+        <tr>
+            <td align="right">
+                <button id='helpButton' class="controlsButton" title="See how to control this sample. The controls are different when in top or ground view.">Controls</button>  
+            </td>	
+            <td align="left">
+                <button id='demoWalk' class="controlsButton" title="The demo walk action is performed using a predefined polyline in the drawing. The camera follows this line 
+until the end is reached.">Demo Walk</button>  
+            </td>		
+        </tr>
+        <tr>
+            <td colspan='2'>
+                <canvas id='display' tabindex="1"> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de; text-align: center; display: table-cell; vertical-align: middle;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>			
+        </tr>
+		<tr>
+		    <td colspan='2' class="cmdLine">
+		        <div id="cmdLine" style="height:0px; text-align:center" class="cmdLine"></div>
+		    </td>
+		</tr>
+    </table>
+    <div id="helpTouchGround" class="help">
+        <table width="100%">
+            <tr>
+                <td colspan="2" align="right"><img class="close" src = "./Help/Close_Box_Red.png" width='30px' height='30px' onclick="hideHelp()"/></td>
+            </tr>
+            <tr><td><img src = "./Help/scroll-left-right.jpg"  width="100px" height="100px"/></td>
+                <td>Tap and scroll left to rotate the camera right. Tap and scroll right to rotate the camera left.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/scroll-up-down.jpg"  width="100px" height="100px"/></td>
+                <td>Scroll down to go forward and up to go backwards.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/scroll-down-double.jpg"  width="100px" height="100px"/></td>
+                <td>Scroll down with two fingers to set the height of your view higher and up to set it lower.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/double-tap.jpg"  width="100px" height="100px"/></td>
+                <td>Double tap anywhere on the map to go on top view level.</td>
+            </tr>
+        </table>
+    </div>
+    <div id="helpTouchTop" class="help">
+        <table width="100%">
+            <tr>
+                <td colspan="2" align="right"><img class="close" src = "./Help/Close_Box_Red.png" width='30px' height='30px' onclick="hideHelp()"/></td>
+            </tr>
+            <tr><td><img src = "./Help/scroll-touch.jpg"  width="100px" height="100px"/></td>
+                <td>Tap and scroll in order to pan around.</td>
+            </tr> 
+            <tr>
+                <td><img src = "./Help/scroll-down-double.jpg"  width="100px" height="100px"/></td>
+                <td>Scroll down with two fingers to lower the height of your vew and up to set it higher.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/double-tap.jpg"  width="100px" height="100px"/></td>
+                <td>Double tap anywhere on the map to go on ground level.</td>
+            </tr>
+        </table>
+    </div>   
+    <div id="helpMouseGround" class="help">
+        <table width="100%">
+            <tr>
+                <td colspan="2" align="right"><img class="close" src = "./Help/Close_Box_Red.png" width='30px' height='30px' onclick="hideHelp()"/></td>
+            </tr>
+            <tr><td><img src = "./Help/mouse-move-hor.jpg"  width="100px" height="100px"/></td>
+                <td>Click and scroll left to rotate the camera right. Click and scroll right to rotate the camera left.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/scroll-mouse.jpg"  width="100px" height="100px"/></td>
+                <td>Click and scroll down to go forward and up to go backwards.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/mouse-wheel.jpg"  width="100px" height="100px"/></td>
+                <td>Use the mouse wheel to change the height of view.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/double-click.jpg"  width="100px" height="100px"/></td>
+                <td>Double click anywhere on the map to go on top view level.</td>
+            </tr>
+        </table>
+    </div>
+    <div id="helpMouseTop" class="help">
+        <table width="100%">
+            <tr>
+                <td colspan="2" align="right"><img class="close" src = "./Help/Close_Box_Red.png" width='30px' height='30px' onclick="hideHelp()"/></td>
+            </tr>
+            <tr><td><img src = "./Help/mouse-move.jpg" width="100px" height="100px"/></td>
+                <td>Click and move in order to pan around.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/mouse-wheel.jpg"  width="100px" height="100px"/></td>
+                <td>Use the mouse wheel to change the height of view.</td>
+            </tr>
+            <tr>
+                <td><img src = "./Help/double-click.jpg"  width="100px" height="100px"/></td>
+                <td>Double click anywhere on the map to go on ground level.</td>
+            </tr>
+        </table>
+    </div> 
+</body>
+</html>

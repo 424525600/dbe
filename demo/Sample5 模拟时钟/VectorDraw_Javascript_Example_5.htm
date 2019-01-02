@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+
+    <script type="text/javascript">
+        
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('display', 800, 597);
+            document.getElementById('noJavascript').innerHTML = "";
+            var vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdcanvas.ActiveAction().DefaultActions = 0; //Disable zoom and pan
+            vdcanvas.SetEnableSelection(false);
+            vdcanvas.SelectDocument("../Drawings/Clock.vds");
+        }
+
+        var datevdText;
+        var minutevdLine;
+        var hourvdLine;
+        var secondvdLine;
+        function _vdAfterOpenDocument(e) {
+            var count = 0;
+            var vdcanvas = vdmanager.vdrawObject('display');
+            var activelayout = vdcanvas.GetActiveLayout();
+            for (k = 0; k < activelayout.Entities.Items.length; k++) {
+                var fig = vdcanvas.GetEntityItem(activelayout.Entities.Items[k]);
+                if (fig.XProperties && fig.XProperties.Items.length > 0) {
+
+                    for (var d = 0; d < fig.XProperties.Items.length; d++) {
+                        if (fig.XProperties.Items[d].Name == "Date") datevdText = fig;
+                        else if (fig.XProperties.Items[d].Name == "Minute") minutevdLine = fig;
+                        else if (fig.XProperties.Items[d].Name == "Hour") hourvdLine = fig;
+                        else if (fig.XProperties.Items[d].Name == "Seconds") secondvdLine = fig;
+                    }
+
+                }
+            }
+
+            //All entities are in layer 0. We will lock the layer to improve the rendering
+            //speed of the drawing since we do not want any selecting of these entities.
+            var vddoc = vdcanvas.GetDocument();
+            vdcanvas.GetDictItem(vddoc.Layers, vddoc.Layers.Items[0]).Lock = true;
+
+            vdcanvas.zoomExtents();
+
+            //Timer
+            setInterval(Tick, 1000);
+
+            
+        }
+        
+        function Tick() {
+            var today = new Date();
+
+            if (datevdText != null) {
+                datevdText.visibility = 0;
+                datevdText.TextString = today.toDateString();
+            }
+
+            if (secondvdLine != null) {
+                secondvdLine.visibility = 0;
+                var sec = today.getSeconds();
+                var angle = vdgeo.VD_TWOPI + vdgeo.HALF_PI - vdgeo.DegreesToRadians(sec * 6);
+                angle = vdgeo.FixAngle(angle);
+                secondvdLine.EndPoint = vdgeo.pointPolar(vdgeo.newpoint(0, 0, 0), angle, 0.2996);
+            }
+
+            var min = today.getMinutes();
+            if (minutevdLine != null) {
+                minutevdLine.visibility = 0;
+                var angle = vdgeo.VD_TWOPI + vdgeo.HALF_PI - vdgeo.DegreesToRadians(min * 6);
+                angle = vdgeo.FixAngle(angle);
+                minutevdLine.StartPoint = vdgeo.pointPolar(vdgeo.newpoint(0, 0, 0), angle, 0.0762);
+                minutevdLine.EndPoint = vdgeo.pointPolar(vdgeo.newpoint(0, 0, 0), angle, 0.2411);
+            }
+
+            if (hourvdLine != null) {
+                hourvdLine.visibility = 0;
+                var chour = today.getHours();
+                if (chour > 12) chour = chour - 12;
+                chour = (today.getHours() * 60 + min) / 2;
+                var angle = vdgeo.VD_TWOPI + vdgeo.HALF_PI - vdgeo.DegreesToRadians(chour);
+                angle = vdgeo.FixAngle(angle);
+                hourvdLine.StartPoint = vdgeo.pointPolar(vdgeo.newpoint(0, 0, 0), angle, 0.0762);
+                hourvdLine.EndPoint = vdgeo.pointPolar(vdgeo.newpoint(0, 0, 0), angle, 0.1750);
+            }
+            var vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.redraw(true);
+        }
+
+    </script>
+
+</head>
+<body onload="vdrawInitPageLoad()" onunload="OnUnload()">
+    <table>
+        <tr>
+            <td>
+                <canvas id='display' tabindex="1"> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,323 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <title>Print dialog demo</title>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript">        
+        var vdcanvas;
+        function vdrawInitPageLoad() {
+            vdgeo.CURVERESOLUTION = 500;
+            vdmanager.AttachCanvas('display', 800, 600);
+            document.getElementById('noJavascript').innerHTML = "";
+            vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            window.onresize = _onresize;
+            document.getElementById('resolution').onkeydown = _onkeydown;
+            document.getElementById('marginTop').onkeydown = _onkeydown;
+            document.getElementById('marginLeft').onkeydown = _onkeydown;
+            document.getElementById('marginRight').onkeydown = _onkeydown;
+            document.getElementById('marginBottom').onkeydown = _onkeydown;
+            document.onkeydown = _onkeydown;
+
+            
+            vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS;
+            Open();
+        }
+        function Open() {
+            vdcanvas.SelectDocument('../Drawings/earth map.vds')
+        }    
+        function _onresize(e){
+            setPreviewSize();
+        }
+        function _vdAfterOpenDocument(){
+            vdcanvas.zoomExtents();
+        }   
+        function getDimensions(width, height){
+            var ret = [];
+            if (document.getElementById("portrait").checked){
+                ret.push(width);
+                ret.push( height);
+            }
+            else{
+                ret.push( height);
+                ret.push(width);
+            }
+            return ret;
+        }
+        function setPrintArea() {
+            document.getElementById("window").checked = true;
+            
+            hideDialog();
+            vdcanvas.GetUserRect(_onActionSelectStateChanged);
+        }
+        function _onActionSelectStateChanged(action, status) {
+            //var vdcanvas = action.vdrawOwner();
+            if (status == 'start') {
+                action.DispProps = (vdConst.ACTION_DISPLAY_DEFAULT | vdConst.ACTION_DISPLAY_USEFILLCOLOR);
+                vdcanvas.Prompt('pick first corner');
+            } else if (status == 'count') {
+                vdcanvas.Prompt('pick second corner');
+            } else if (status == 'end') {
+                vdcanvas.Prompt('');
+                if (!action.IsCanceled()) {
+
+                    var p1 = action.ResValue[0];
+                    var p2 = action.ResValue[1];
+                    
+                    vdcanvas.GetActiveLayout().Printer.PrintWindow[0] = Math.min(p1[0], p2[0]);
+                    vdcanvas.GetActiveLayout().Printer.PrintWindow[1] = Math.min(p1[1], p2[1]);
+                    vdcanvas.GetActiveLayout().Printer.PrintWindow[2] = p1[2];
+
+                    vdcanvas.GetActiveLayout().Printer.PrintWindow[3] = Math.max(p1[0], p2[0]);
+                    vdcanvas.GetActiveLayout().Printer.PrintWindow[4] = Math.max(p1[1], p2[1]);
+                    vdcanvas.GetActiveLayout().Printer.PrintWindow[5] = p2[2];
+
+                    showDialog();
+                }
+            }
+        }
+        function applyMargins(){
+            var top=0,bottom=0,left=0,right=0;
+            try{
+                top = parseInt(document.getElementById("marginTop").value);
+                left = parseInt(document.getElementById("marginLeft").value);
+                right = parseInt(document.getElementById("marginRight").value);
+                bottom = parseInt(document.getElementById("marginBottom").value);
+            }
+            catch(e){
+
+            }
+            vdcanvas.GetActiveLayout().Printer.margins[0] = left;
+            vdcanvas.GetActiveLayout().Printer.margins[1] = top;
+            vdcanvas.GetActiveLayout().Printer.margins[2] = right;
+            vdcanvas.GetActiveLayout().Printer.margins[3] = bottom;
+        }
+
+        function showDialog(){
+            document.getElementById("dialogContainer").style.visibility = "visible";
+
+            //Apply papersize
+            var e = document.getElementById("paperSizes");
+            var str = e.options[e.selectedIndex].value;
+            var width = parseFloat(str.split("x")[0]) * 100;
+            var height = parseFloat(str.split("x")[1]) * 100;
+            //Apply orientation (portrait, landscape)
+            var dimensions = getDimensions(width, height);
+            //Apply scale
+            e = document.getElementById("scaletofit");
+            var scaleFlag;
+            if (e.checked) scaleFlag = vdConst.PRINT_SCALE_FLAG_FIT;
+            else scaleFlag = vdConst.PRINT_SCALE_FLAG_ORIGINAL;
+            //Apply margins
+            applyMargins();
+            //Apply grayscale
+            var prevGreyscale = vdcanvas.GetGrayScale();
+            vdcanvas.SetGrayScale(document.getElementById("greyscale").checked);
+            //Apply resolution
+            var res;
+            try{
+                res = parseInt(document.getElementById("resolution").value);
+            }
+            catch(e){
+                res = 96;
+            }
+            //Apply print window
+            var printarea;
+            if (document.getElementById("view").checked) printarea = vdConst.PRINT_WINDOW_FLAG_VIEW;
+            else if(document.getElementById("extents").checked) printarea = vdConst.PRINT_WINDOW_FLAG_EXTENTS;
+            else if(document.getElementById("window").checked) printarea = vdConst.PRINT_WINDOW_FLAG_ORIGINAL;
+
+            var prevCanvas = document.getElementById("displayPreview");
+
+            var bytes = vdcanvas.printToImageData(printarea, scaleFlag, dimensions, null, [255,255,255,255], 0, res);
+            prevCanvas.onload = function(e) {setPreviewSize()};
+            prevCanvas.src = bytes;  
+            updatePrintImage(document.getElementById("landscape").checked);
+            vdcanvas.SetGrayScale(prevGreyscale);          
+        }
+        function setPreviewSize(){
+            var prevCanvas = document.getElementById("displayPreview");
+
+            var bmpWidth = prevCanvas.naturalWidth;
+            var bmpHeight = prevCanvas.naturalHeight;
+
+            var contWidth = document.getElementById("preview").offsetWidth - 8;
+            var contHeight = document.getElementById("preview").offsetHeight - 8;
+
+            var scale = Math.min(contWidth/bmpWidth, contHeight/bmpHeight);
+
+            prevCanvas = document.getElementById("displayPreview");
+            prevCanvas.width = scale * bmpWidth;
+            prevCanvas.height = scale * bmpHeight;
+        }
+        function hideDialog(){
+            document.getElementById("dialogContainer").style.visibility = "hidden";
+        }
+        function updatePrintImage(landscape){
+            var e = document.getElementById("paperSizes");          
+            var str = e.options[e.selectedIndex].value;
+            var width = parseFloat(str.split("x")[0]);
+            var height = parseFloat(str.split("x")[1]);
+            var dimensions = getDimensions(width, height);
+
+            var paper = e.options[e.selectedIndex].innerHTML;
+
+            e = document.getElementById("printBmp");
+            e.src = document.getElementById("displayPreview").src;
+            
+            e.style.width = dimensions[0] + "in";
+            e.style.height = dimensions[1] + "in";
+
+            var orientation = (landscape)?"landcape":"protrait";
+            cssPagedMedia.size("{0}in {1}in;".replace("{0}", dimensions[0]).replace("{1}", dimensions[1]));
+            // else
+            //     cssPagedMedia.size("{0} portrait;".replace("{0}", paper));            
+        }
+        function printDocument(){  
+            updatePrintImage(document.getElementById("landscape").checked);
+            print();
+        }
+        function autoUpdateDrawing(){
+            if(!document.getElementById("autoupdate").checked) return;
+            showDialog();
+        }
+        function _onkeydown(e){
+            
+            if (e.keyCode === 13){
+                autoUpdateDrawing();
+                return false;
+            }
+            else if(e.keyCode === 27){
+                hideDialog();
+                return false;
+            }
+        }
+
+        var cssPagedMedia = (function () {
+            var style = document.createElement('style');
+            document.head.appendChild(style);
+            return function (rule) {
+                style.innerHTML = rule;
+            };
+        }());
+
+        cssPagedMedia.size = function (size) {
+            cssPagedMedia('@page {size: ' + size + ' margin: 0;}');
+        };
+
+        
+
+    </script>
+
+</head>
+<body onload="vdrawInitPageLoad()">
+    <div id="canvasContainer">
+        <canvas id='display'> </canvas>
+        <div id='noJavascript'>
+            <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+            </div>
+        </div>
+        <div id="printDialog">
+            <button onclick="showDialog()">Print Preview</button>
+        </div>
+    </div>
+    
+    <div id="dialogContainer">
+        <div id="printerDialogue">
+            
+            <div id="controlsContainer">
+                
+                <h3>Print preview</h3>
+                
+                <div id="papersize">
+                    <p>Paper size</p>
+                    <select id="paperSizes" onchange="autoUpdateDrawing()">
+                        <option value="8.27x11.69">A4</option>
+                        <option value="11.69x16.54">A3</option>
+
+                        <option value="8.50x11.00">Letter</option>
+                        <option value="8.50x14.00">Legal</option>
+                        <option value="7.25x10.50">Executive</option>
+                        
+                        <option value="23.39x33.11">A1</option>
+                        <option value="16.54x23.39">A2</option>
+                        <option value="5.83x8.27">A5</option>
+                        <option value="4.13x5.83">A6</option>
+                        <option value="2.91x4.13">A7</option>
+                        <option value="2.04x2.91">A8</option>                        
+                    </select>
+                </div>
+
+                <div id="orientation">
+                    <p>Orientation</p>
+                    <input type="radio" name="orientation" id="portrait" checked="checked" onchange="autoUpdateDrawing()">Protrait
+                    <input type="radio" name="orientation" id="landscape" onchange="autoUpdateDrawing()">Landscape
+                </div>
+
+                <div id="scale">
+                    <p>Scale</p>
+                    <input type="checkbox" id="scaletofit" checked="checked" onchange="autoUpdateDrawing()">Scale to fit<br>
+                </div>
+
+                <div id="margins">
+                    <p>Margins</p>
+                    <table align="center">
+                        <tr>
+                            <td>Top: </td>
+                            <td align="center"><input type="text" id="marginTop" size="1" value="10"></td>
+                            <td>Bottom: </td>
+                            <td align="center"><input type="text" id="marginBottom" size="1" value="10"></td>
+                        </tr>
+                        <tr>
+                            <td>Left: </td>
+                            <td align="center"><input type="text" id="marginLeft" size="1" value="10"></td>
+                            <td>Right: </td>
+                            <td align="center"><input type="text" id="marginRight" size="1" value="10"> </td>
+                        </tr>
+                        <tr><td></td><td></td></tr>
+                    </table>
+                </div>
+
+                <div id="outputoptions">
+                    <p>Output options</p>
+                    <ul>
+                        <li>
+                            <input type="checkbox" id="greyscale" onchange="autoUpdateDrawing()">Greyscale<br>
+                        </li>
+                        <li>
+                            <input type="text" id="resolution" size="1" value="96" maxlength="5"> Resolution
+                        </li>
+                    </ul>                                
+                </div>
+
+                <div id="printarea">
+                    <p>Print area</p>
+                    <input type="radio" name="printarea" id="view" checked="checked" onchange="autoUpdateDrawing()">View
+                    <input type="radio" name="printarea" id="extents" onchange="autoUpdateDrawing()">Extents
+                    <input type="radio" name="printarea" id="window"  onchange="autoUpdateDrawing()">Window                  
+                    <button id="pickarea" onclick="setPrintArea()">Pick</button>
+                </div>
+                <div id="controlbuttons">
+                    <p>Control Buttons</p>
+                    <button onclick="showDialog()">Update</button>
+                    <input id="autoupdate" type="checkbox" checked="true">auto update<br>                    
+                    <button class="contrButtons" onclick="hideDialog()">Close</button> 
+                    <button class="contrButtons" onclick="printDocument()">Print</button>   
+                </div>
+                
+            </div>
+            <div id="previewContainer">
+                <div id="preview">
+                    <img id="displayPreview">
+                </div>                        
+           </div>
+       </div>
+       <img id="printBmp" src="horizon01.jpg">
+   </body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+
+    <!--<script type="text/javascript" src='commands.js'></script>-->
+
+    <script type="text/javascript">
+		//We're keeping a few global variables in order to make the use of common elements more convenient.
+        var vdDoc;
+        var ViewBox;
+        var vdcanvas;
+		//This boolean variable is used to define if the user is panning.
+        var pan = false;
+		//This is a pretty standard function running everytime the page is load.
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('display', 700, 538);
+            document.getElementById('noJavascript').innerHTML = "";
+            vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.GripManager.Enable = false;
+        	vdcanvas.SetDefaultTimeOutMilliseconds(600);
+
+			//This event is fired after the document has opened and is ready to use. Dont execute any functions before this event is fired or there may be errors.
+        	vdcanvas.vdAfterOpenDocument = _onAfterOpen;
+        	vdcanvas.vdmousemove = _mouseMove;
+        	vdcanvas.vdmouseup = _vdmouseup;
+			//This event if fired whenever the user's view is about to change.
+        	vdcanvas.vdUpdateView = _vdUpdateView;
+        	vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS;
+        	Open();
+        }
+
+        function _onAfterOpen(vdcanvas) {
+        	EditHatchColors();
+        	vdcanvas.zoomExtents();
+        	vdcanvas.redraw();
+        	ViewBox = vdcanvas.GetViewBox();
+        }
+        function _vdUpdateView(e) {
+        	LockToEdges(e);
+        }
+		//This function makes sure that the user cannot pan away from the map or zoomout too much out of it.
+        function LockToEdges(e) {
+			//If ViewBox is undefined this means that the document hasn't opened yet, so there is no drawing to lock to edges.
+        	if (ViewBox == undefined)
+        		return;
+			
+			//maxViewSize is the maximum allowed viewsize in order for our drawing to fully cover the canvas.
+        	var maxViewSize = ViewBox.top - ViewBox.bottom;
+        	var aspect = (ViewBox.right - ViewBox.left) / maxViewSize;
+			//By keeping the minimum between the maxViewSize and e.ViewSize we make sure that the user won't be able to zoomout further than what we want.
+        	e.ViewSize = Math.min(maxViewSize, e.ViewSize);
+        	var left = e.ViewCenterX - aspect * e.ViewSize * 0.5;
+        	var right = e.ViewCenterX + aspect * e.ViewSize * 0.5;
+        	var top = e.ViewCenterY + e.ViewSize * 0.5;
+        	var bottom = e.ViewCenterY - e.ViewSize * 0.5;
+
+			//The following if statements restrain model's edges inside the view area, so the user cannot pan away from the document's entities.
+        	if (left < ViewBox.left)
+        		e.ViewCenterX += (ViewBox.left - left);
+        	else if (right > ViewBox.right)
+        		e.ViewCenterX += (ViewBox.right - right);
+        	if (top > ViewBox.top)
+        		e.ViewCenterY += (ViewBox.top - top);
+        	else if (bottom < ViewBox.bottom)
+        		e.ViewCenterY += (ViewBox.bottom - bottom);
+        }
+        function _mouseMove(e) {
+			//If any of the mouse buttons are pressed while moving the mouse, the user is panning.
+        	if (e.mousebutton != 0) {
+        		pan = true;
+        		return;
+        	} else {
+        		pan = false;
+        	}
+			//If there is an active action we don't want to execute the following commands.
+        	if (!e.target.ActiveAction().IsStarted()) {
+        		var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
+        		if (entity != null) {
+        			var layer = vdcanvas.GetEntityItem(entity.Layer);
+        			//It is advised to check if a property is undefined or not before using it like this --> if (layer.XProperties != undefined) {}
+					//In this case, all selectable entities are in layers with XProperties so it's not necessary.
+        			var continent = layer.XProperties.Items[0].PropValue;
+					//These XProperties contain the country's continent and amount of clients.
+        			var clients = layer.XProperties.Items[1].PropValue;
+        			e.target.canvas.style.cursor = "pointer";
+        			setStringCountry(continent + "</br>" + layer.Name);
+        			if (clients == 0)
+        				setStringClients("");
+        			else
+        				setStringClients(clients.toString() + " Clients");
+        		} else {
+        			e.target.canvas.style.cursor = "crosshair";
+        			setStringCountry("");
+        			setStringClients("");
+        		}
+        	}
+        }
+		//Applying the country name to the "country" label.
+        function setStringCountry(str) {
+        	var label = document.getElementById("country");
+        	label.innerHTML = str;
+        }
+		//Applying the clients' amount to the "clients" label.
+        function setStringClients(str) {
+        	var label2 = document.getElementById("clients");
+        	label2.innerHTML = str;
+        }
+        function _vdmouseup(e) {
+			//If the user has just panned then the mouseup event is fired to just end the pan action.
+        	if (pan) {
+        		pan = false;        		
+        	}
+        	else if (!e.target.ActiveAction().IsStarted()) {
+        		var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
+        		if (entity != null) {
+        			e.Cancel = true;
+        			var layer = vdcanvas.GetEntityItem(entity.Layer);
+        			var continent = layer.XProperties.Items[0].PropValue;
+        			setStringCountry(continent + "</br>" + layer.Name);
+
+					//We're extracting the entity's bounding box so we can zoomin on this specific entity.
+        			var b = entity.BoundingBox; 
+					//We're extracting the current view box in order to return to this view after completing our task.
+					var pvb = vdcanvas.GetViewBox();
+					//To use zoomwindow we need to pass two points in ViewCoordinates. BoundingBox is in WorldCoordinates so we need to convert these points using the WorldTwoView function.
+        			var p1 = vdcanvas.WorldToView(vdgeo.newpoint(b[0], b[1], b[2]));
+        			var p2 = vdcanvas.WorldToView(vdgeo.newpoint(b[3], b[4], b[5]));
+        			vdcanvas.zoomwindow(p1, p2);
+        			vdcanvas.GetActiveLayout().ViewSize *= 1.5;
+					//We're changing the LineWeight to emphasize on the entity we're altering.
+        			entity.LineWeight = 210;
+        			_updateFigure(entity);
+        			vdcanvas.redraw();
+        			
+        			var amount = layer.XProperties.Items[1].PropValue;
+        			amount = prompt("Set the number of clients in " + layer.Name, amount);
+					//If the user presses cancel then there's no need to edit any entity.
+        			if (amount != null)
+					{
+        				layer.XProperties.Items[1].PropValue = parseInt(amount);
+						EditHatchColors();
+					}
+        			entity.LineWeight = 1;
+        			_updateFigure(entity);
+        			entity.BoundingBox = b;
+					//We're using the pvb object to go back to the previous zoom level.
+        			vdcanvas.zoomwindow(vdgeo.newpoint(pvb.left, pvb.bottom, 0), vdgeo.newpoint(pvb.right, pvb.top, 0));
+        			vdcanvas.redraw();
+        		}
+        	}
+        }
+		//Everytime we change an entity's properties we need to update it so for the changes to be shown.
+        function _updateFigure(entity) {
+        	var b = entity.BoundingBox;
+        	vdcanvas.UpdateFig(entity);
+			//This is a small trick in order to update the entities faster. UpdateFig set the BoundingBox to undefined forcing the library to recalculate it.
+			//If we haven't changed  the size of an entity, there's no reason to recalculate the bounding box. 
+			//If all entities need to be updated then use the GetExtents() method of vdcanvas.
+        	entity.BoundingBox = b;
+        }
+        function Open() {
+            vdmanager.vdrawObject('display').SelectDocument("../Drawings/earth colored.vds");
+        }
+		//We're using this function to change the color every polyline's hatch in the document, depending on the clients of the specific country this polyline is representing.
+        function EditHatchColors() {
+        	vdDoc = vdcanvas.GetDocument();
+        	var activelayout = vdcanvas.GetActiveLayout();
+        	for (k = 0; k < activelayout.Entities.Items.length; k++) {
+        		var fig = vdcanvas.GetEntityItem(activelayout.Entities.Items[k]);
+				setFigureHatchColor(fig);
+        	}
+        }
+		//This function defines the specific color a polyline's hatch will get depending on the amount of client's.
+        function setFigureHatchColor(fig) {
+        	var layer = vdcanvas.GetEntityItem(fig.Layer);
+        	var greenFactor = 0;
+			//In this case we absolutely need to check if the entity's layer contains hatchproperties.
+        	if (layer.XProperties != undefined) {
+        		greenFactor = Math.log(layer.XProperties.Items[1].PropValue + 1) / 5.29;
+        		if (fig.HatchProperties != null) {
+                    //The following code is used to define the hatch color, depending on the amount of clients.
+        			var cr = (255 * (1 - greenFactor)) | 0;
+        			var cg = (127 * greenFactor + 255 * (1 - greenFactor)) | 0;
+        			var cb = (255 * (1 - greenFactor)) | 0;
+        			fig.HatchProperties.FillColor.SystemColor = new Array(cr, cg, cb, 255);
+        			_updateFigure(fig);
+        		}
+        	}
+        }
+		
+    </script>
+
+</head>
+<body onload="vdrawInitPageLoad()" onunload="OnUnload()">
+    <table border="0" align="center">
+        <tr>
+            <td rowspan="3">
+                <h1 align="center">
+                    Enterprise clients throughout the world</h1>
+                <canvas id="display" tabindex="1"> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td width="150px" height="200px" align="center" style="vertical-align: bottom">
+                <div style="width: 130px; height: 45px; background-color: rgb(199,220,255); vertical-align: bottom;">
+                    <label id="country">
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="vertical-align: text-top">
+                <div style="width: 130px; height: 20px; background-color: rgb(179, 171, 139);">
+                    <label id="clients" style="color: rgb(255, 255, 255);">
+                </div>
+                Click on a country to change </br> the number of clients
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,1281 @@
+<!--Copyright VectorDraw 2017 , Androulakis Kostas -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN	
+<html>
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link href='http://fonts.googleapis.com/css?family=Raleway:400,800' rel='stylesheet'
+        type='text/css' />    
+     <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+    <script type="text/javascript" src='mycommands.js'></script>
+    <script type="text/javascript">
+        var vdcanvas;
+
+        function vdrawInitPageLoad() {
+            drawBitmaps();
+            vdcanvas = vdmanager.AttachCanvas('canvas');
+            vdcanvas.canvas.addEventListener("dragenter", dragenter, false);
+            vdcanvas.canvas.addEventListener("dragover", dragover, false);
+            vdcanvas.canvas.addEventListener("drop", drop, false);
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdcanvas.vdAfterSaveDocument = _vdAfterSaveDocument; //defines the function that will be fire when a web control document data saved completed.
+            vdcanvas.vdprogress = _progress;
+            vdcanvas.vdPrompt = _onprompt;
+            vdcanvas.vdError = _vdError;         
+            vdcanvas.SetActionOsnapSize(20);
+            vdcanvas.SetActionOsnapColor(new Array(255, 255, 0));
+            vdcanvas.vdActionDraw = _vdActiondraw;
+            //vdcanvas.ActiveAction().TouchCancelTimeOut =  1200;   
+            newDrawing();
+            vdcanvas.GripManager.SelectMode = vdConst.GRIPMODE_AUTO; // | vdConst.GRIPMODE_SINGLE;
+            //vdcanvas.SetEnableSelection(false);
+        }
+        
+        this.printInfo = function (infoId, text) {
+
+            if (text === undefined || text === null) return;
+            var info = document.getElementById(infoId);
+            if (info == undefined) return;
+            info.innerHTML = ":" + text;
+        }
+        function _vdError(sender, ErrCategoryId, statusId, info) {
+            var msg = "";
+            if (ErrCategoryId == vdConst.Err_LoadFile) msg += "Error Loading file. ";
+            msg += "Error status code = " + statusId.toString() + ". ";
+            if (info != undefined) msg += info;
+
+            printInfo('info', msg);
+
+        }
+        function _onprompt(sender, msg) {
+            printInfo('info', msg);
+        }
+       
+        function _progress(evt) {
+            if (evt.percent < 0) printInfo('info', evt.Info);
+            else if (evt.percent >= 100) printInfo('info', '');
+            else printInfo('info', evt.Info + " " + evt.percent.toString() + "%");
+        }
+        function _vdAfterOpenDocument() {
+
+            document.getElementById('color').value = vdConst.colorToString(vdcanvas.GetActivePenColor());
+            fillViews();
+            fillLayouts();
+            fillLayers();
+            fillLinetypes();
+            fillHatchPatterns();
+            fillblocks();
+            fillImageCombo();
+            SelectOsnaps();
+            /////////// perspectiveMode Begin //////////////////
+            var layout = vdcanvas.GetActiveLayout();
+            if (!layout) return;
+            if (layout.PerspectiveMod == 1) 
+                document.getElementById('persp').checked = true;
+            else document.getElementById('persp').checked = false;
+            /////////// perspectiveMode End //////////////////
+
+        }
+
+        function newDrawing() {
+            commands.newdrawing();
+        }
+
+        /////////////// show the distance and rotation of the reference point ////////////////////////////////////////////////////////////////////
+
+        function _vdActiondraw(action) {
+            var ptref = action.ReferencePoint; //get the reference point in world Coordinate System
+            if (!ptref || action.actionType != vdConst.ACTION_LINE_WORLD) return; //do nothing if the action is not waiting for a user reference point
+            var ptcur = action.CurrentPoint; //get the current mouse location in world Coordinate system
+            var dist = vdgeo.Distance3D(ptref, ptcur); //get the distance between reference and current point in drawing units
+            var angle = vdgeo.GetAngle(ptref, ptcur); //get the angle counter-clockwise relative to x direction in radians
+            var angledeg = vdgeo.RadiansToDegrees(angle); //convert the angle in degrees
+            if (angle > vdgeo.HALF_PI && angle < vdgeo.VD_270PI) angle += vdgeo.PI; //change the angle to be horizondally readable          
+            //create a temporary text and draw it in the center of user raber reference line
+            var midpt = vdgeo.MidPoint(ptref, ptcur);
+            var txtSize = vdcanvas.GetPixelSize() * 15;
+            var textvalue = dist.toFixed(2) + '<' + angledeg.toFixed(2);
+            var txt = vdcanvas.AddText(textvalue, txtSize, midpt, vdConst.VdConstHorJust_VdTextHorCenter, vdConst.VdConstVerJust_VdTextVerBottom, angle, false, {});
+            txt.PenColor = vdConst.colorFromString("255,255,0");
+            vdcanvas.DrawEntity(txt);
+        }
+
+        // Save
+        function showPopUpSave() {
+
+            document.getElementById("popupSave").style.display = "block";
+        }
+        function exitPopupSave() {
+
+            document.getElementById("popupSave").style.display = "none";
+        }
+        function _vdAfterSaveDocument(saveData) {
+
+            var textFile = null;
+            makeTextFile = function (text) {
+                var data = new Blob([text], { type: 'octet/stream' });
+                if (textFile !== null) {
+                    window.URL.revokeObjectURL(textFile); //clear previous blob data
+                }
+                textFile = window.URL.createObjectURL(data);
+                return textFile;
+            };
+
+            var path = saveData.dataObject.pathname;
+            if (!path) path = 'vdDocument.vds';
+            var n = path.lastIndexOf("/");
+            if (n >= 0) path = path.substr(n + 1);
+            if (navigator.msSaveBlob) {
+                var data = new Blob([saveData.dataStream], { type: 'octet/stream' });
+                navigator.msSaveBlob(data, path);
+            } else {
+                var href = makeTextFile(saveData.dataStream);
+                var link = document.getElementById('link');
+                link.setAttribute('download', path);
+                link.href = href;
+                showPopUpSave();
+            }
+        }
+
+        // Osnaps
+        function SelectOsnaps() {
+            var endpoint = document.getElementById("endpoint");
+            var midpoint = document.getElementById("midpoint");
+            var centerpoint = document.getElementById("centerpoint");
+            var near = document.getElementById("near");
+            var insert = document.getElementById("insert");
+            var node = document.getElementById("node");
+            var osnapmode = 0;
+
+            if (endpoint.checked) {
+                osnapmode += vdConst.OsnapMode_END;
+
+            }
+            if (midpoint.checked) {
+                osnapmode += vdConst.OsnapMode_MID;
+
+            }
+            if (centerpoint.checked) {
+                osnapmode += vdConst.OsnapMode_CEN;
+
+            }
+            if (near.checked) {
+                osnapmode += vdConst.OsnapMode_NEA;
+
+            }
+            if (insert.checked) {
+                osnapmode += vdConst.OsnapMode_INS;
+
+            }
+            if (node.checked) {
+                osnapmode += vdConst.OsnapMode_NODE;
+
+            }
+
+            vdcanvas.SetOsnapMode(osnapmode);
+
+        }
+
+        // Layers
+        function fillLayers() {
+            var vddoc = vdcanvas.GetDocument();
+            var layers = vdcanvas.GetLayers();
+            var combo = document.getElementById("LayersCombo");
+            var inner = "";
+            for (var i = 0; i < layers.length; i++) {
+                inner += "<option value= '" + layers[i].Name + "'>" + layers[i].Name + "</option>";
+            }
+            combo.innerHTML = inner;
+            var clayer = vdcanvas.GetEntityItem(vddoc.ActiveLayer);
+            if (clayer) combo.value = clayer.Name;
+        }
+        function selectLayer() {
+            var combo = document.getElementById("LayersCombo");
+            vdcanvas.scriptCommand.layer(combo.value);
+        }
+
+        // LayOuts 
+        function fillLayouts() {
+            var layouts = vdcanvas.GetLayouts();
+            var combo = document.getElementById("LayoutsCombo");
+            var inner = "";
+            for (var i = 0; i < layouts.length; i++) {
+                inner += "<option value='" + layouts[i].Name + "'>" + layouts[i].Name + "</option>";
+            }
+            combo.innerHTML = inner;
+            combo.value = vdcanvas.GetActiveLayout().Name;
+        }
+        function selectLayout() {
+            var combo = document.getElementById("LayoutsCombo");
+            vdcanvas.scriptCommand.layout(combo.value);
+        }
+
+        // Linetypes
+        function fillLinetypes() {
+            var linetypes = vdcanvas.GetLineTypes();
+            var combo = document.getElementById("LineTypesCombo");
+            var inner = "";
+            for (var i = 0; i < linetypes.length; i++) {
+                inner += "<option value=" + linetypes[i].Name + ">" + linetypes[i].Name + "</option>";
+            }
+            combo.innerHTML = inner;
+            var vddoc = vdcanvas.GetDocument();
+            var clinetype = vdcanvas.GetEntityItem(vddoc.ActiveLineType);
+            if (clinetype) combo.value = clinetype.Name;
+
+        }
+        function selectLineType(combo) {
+            vdcanvas.scriptCommand.linetype(combo.value);
+        }
+
+        // File Select 
+        function handleFileSelect(evt) {
+            var files = evt.files; // FileList object
+
+            if (files && files.length > 0) {//in case of no cancel
+                var reader = new FileReader();
+
+                var f = files[0];
+                reader.onloadend = function (e) {
+                    commands.open(e.target.result, f.name);
+                }
+                reader.readAsText(f);
+            }
+            evt.value = "";
+        }
+
+
+        ///////////////////////////// View Functions /////////////////////////////////////////////////////
+
+
+
+        function view_wire2d() {
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_WIRE_2d);
+        }
+        function view_wire3d() {
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_WIRE_3d);
+        }
+        function view_shade() {
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_SHADE);
+        }
+        function view_shadegl() {
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_SHADE_GL);
+        }
+        function view_rendergl() {
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_RENDER_GL);
+        }
+        function view_render() {
+            vdcanvas.SetRenderMode(vdConst.RENDERMODE_RENDER);
+        }
+        function zoomPnt() { }
+
+        ////////// ZoomWindow //////////////////////////////
+        function CmdZoomWindow(canvasId) {
+            var vdcanvas = vdmanager.vdrawObject(canvasId);
+            vdcanvas.GetUserRect(_onActioncmdZoomStateChanged);
+        }
+        function _onActioncmdZoomStateChanged(action, status) {
+            var vdcanvas = action.vdrawOwner();
+            if (status == 'start') {
+                vdcanvas.Prompt('pick first corner');
+            } else if (status == 'count') {
+                vdcanvas.Prompt('pick second corner');
+            } else if (status == 'end') {
+                vdcanvas.Prompt('');
+                if (!action.IsCanceled()) {
+                    vdcanvas.zoomwindow(action.ResValue[0], action.ResValue[1]);
+                    vdcanvas.redraw();
+                }
+            }
+        }
+
+        function redraw() {// We count also the time that takes the redraw
+            var t1_0 = new Date().getTime();
+            vdcanvas.redraw();
+            var t1_1 = new Date().getTime();
+            printInfo('info', ' drawentities Time= ' + (t1_1 - t1_0));
+        }
+      
+
+        ////////////////////////////////// 3DViews //////////////////////////////////////////////////////////////
+
+         function topView() { vdcanvas.SetStdView(vdConst.StdView_TOP); setTimeout(vdcanvas.redraw); }
+         function bottomView() { vdcanvas.SetStdView(vdConst.StdView_BOTTOM); setTimeout(vdcanvas.redraw); }
+         function rightView() { vdcanvas.SetStdView(vdConst.StdView_RIGHT); setTimeout(vdcanvas.redraw); }
+         function leftView() { vdcanvas.SetStdView(vdConst.StdView_LEFT); setTimeout(vdcanvas.redraw); }
+         function frontView() { vdcanvas.SetStdView(vdConst.StdView_FRONT); setTimeout(vdcanvas.redraw); }
+         function backView() { vdcanvas.SetStdView(vdConst.StdView_BACK); setTimeout(vdcanvas.redraw); }
+         function northEastView() { vdcanvas.SetStdView(vdConst.StdView_ISO_NE); setTimeout(vdcanvas.redraw); }
+         function northWestView() { vdcanvas.SetStdView(vdConst.StdView_ISO_NW); setTimeout(vdcanvas.redraw); }
+         function southEastView() { vdcanvas.SetStdView(vdConst.StdView_ISO_SE); setTimeout(vdcanvas.redraw); }
+         function southWestView() { vdcanvas.SetStdView(vdConst.StdView_ISO_SW); setTimeout(vdcanvas.redraw); }
+
+        
+         
+        //////////////////////////////// FileOpen //////////////////////////////////////////////////////// //////
+
+        function showPopUpOpenFile() {
+            document.getElementById("popupOpenFile").style.display = "block";
+        }
+        function closePopupFileOpen() {
+            vdcanvas.SelectDocument(document.getElementById("drawing").value);
+            document.getElementById("popupOpenFile").style.display = "none";
+        }
+        function exitPopupFileOpen() { document.getElementById("popupOpenFile").style.display = "none"; }
+
+        ///////////////////////////////////Image ////////////////////////////////////////////////////////
+
+        function showPopUpImage() {
+            document.getElementById("popupImage").style.display = "block";
+        }
+        function fillImageCombo() {
+            var vddoc = vdcanvas.GetDocument();
+            var images = vdcanvas.GetImages();
+            var imagecombo = document.getElementById('ImagesCombo');
+            var inner = "";
+            for (var i = 0; i < images.length; i++) {
+                inner += "<option value='" + images[i].Name + "'>" + images[i].Name + "</option>";
+            }
+            imagecombo.innerHTML = inner;
+        }
+        function closePopupImage() {
+            document.getElementById("popupImage").style.display = "none";
+            commands.commandexecute(image);
+        }
+        function ExitPopupImage() {
+            document.getElementById("popupImage").style.display = "none";
+        }
+
+        ////////////////////////////////// Block //////////////////////////////////////////////////////
+
+        function showPopUpBlock() {
+            document.getElementById("popupBlock").style.display = "block";
+        }
+        function ExitPopupBlock() {
+            document.getElementById("popupBlock").style.display = "none";
+        }
+        function fillblocks() {
+            var vddoc = vdcanvas.GetDocument();
+            var blocks = vdcanvas.GetBlocks();
+            var blockcombo = document.getElementById('blocksCombo');
+            var inner = "";
+            for (var i = 0; i < blocks.length; i++) {
+                inner += "<option value= '" + blocks[i].Name + "'>" + blocks[i].Name + "</option>";
+            }
+            blockcombo.innerHTML = inner;
+        }
+        function closePopupBlock() {
+            document.getElementById("popupBlock").style.display = "none";
+            commands.commandexecute(block);
+        }
+
+        //////////////////////////////////// Text ///////////////////////////////////////////////////////
+
+
+        function showPopUpText(e) {
+
+            document.getElementById("popupText").style.display = "block";
+            fillpopuptext();
+
+        }
+        function fillpopuptext() {
+            var vddoc = vdcanvas.GetDocument();
+            var tstylelist = document.getElementById("textstylelist");
+            var textstyles = vdcanvas.GetTextStyles();
+            var inner = "";
+            for (var i = 0; i < textstyles.length; i++) {
+                var textstyle = textstyles[i];
+                inner += "<option value= '" + textstyle.Name + "'>" + textstyle.Name + "</option>";
+            }
+            tstylelist.innerHTML = inner;
+            var ctextstyle = vdcanvas.GetEntityItem(vddoc.ActiveTextStyle);
+            if (ctextstyle) tstylelist.value = ctextstyle.Name;
+        }
+
+        function closePopupText() {
+            document.getElementById("popupText").style.display = "none";
+            commands.commandexecute(text);
+
+        }
+        function ExitPopupText() {
+            document.getElementById("popupText").style.display = "none";
+        }
+
+        ///////////////////////////////////// Hatch /////////////////////////////////////////////////////
+
+        function showPopUpHatch() {
+            document.getElementById("popupHatch").style.display = "block";
+        }
+        function fillHatchPatterns(param) {
+            var vddoc = vdcanvas.GetDocument();
+            var patterns = vdcanvas.GetHatchPatterns();
+            var combo = document.getElementById('HatchPatternsCombo');
+            var inner = "";
+            for (var i = 0; i < patterns.length; i++) {
+                inner += "<option value= '" + patterns[i].Name + "'>" + patterns[i].Name + "</option>";
+            }
+            combo.innerHTML = inner;
+
+        }
+        function setActiveHatch(param) {
+            var hPatrn = vdcanvas.createNewHatchProperties(eval(param), hatchbkcolor, hatchfillcolor);
+            vdcanvas.SetActiveHatchProperties(hPatrn);
+        }
+        function selectPattern(combo) {
+            vdcanvas.scriptCommand.hatch(combo.value);
+
+        }
+        function closePopupHatch() {
+            document.getElementById("popupHatch").style.display = "none";
+            commands.commandexecute(hatch);
+        }
+        function ExitPopupHatch() {
+            document.getElementById("popupHatch").style.display = "none";
+            doClose();
+        }
+
+        ///////////////////////////////////////// Osnaps ///////////////////////////////////////////////
+       
+        function showPopUpOsnaps() {
+            document.getElementById("popupOsnaps").style.display = "block";          
+        }
+
+        function closePopUpOsnaps() {
+            document.getElementById("popupOsnaps").style.display = "none";
+            SelectOsnaps();
+        }
+
+        var visibleMenuBtn = null;
+        function myFunction(id) {
+            if (visibleMenuBtn && visibleMenuBtn.id != id) {
+                visibleMenuBtn.classList.toggle("show");
+                visibleMenuBtn = null;
+            }
+            var element = document.getElementById(id);
+            element.classList.toggle("show");
+            if (element.classList.contains('show')) visibleMenuBtn = element;
+            else visibleMenuBtn = null;
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.onclick = function (event) {
+            if (event.target.className != "dropbtn") {//in order to work with IE
+
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                var i;
+                for (i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                        visibleMenuBtn = null;
+
+                    }
+                }
+            }
+        }
+
+        //////////////////////////////////// About ///////////////////////////////////////////////
+
+        function showPopupAbout() {
+            document.getElementById("popupAbout").style.display = "block";
+        }
+        function exitPopupAbout() {
+
+            document.getElementById("popupAbout").style.display = "none";
+        }
+
+        /////////////////////////////////// Print //////////////////////////////////////////////////
+
+        function printCanvas() { // Print canvas in a new html page
+
+            var dataUrl = vdcanvas.printToImageData(vdConst.PRINT_WINDOW_FLAG_VIEW,
+            vdConst.PRINT_SCALE_FLAG_FIT,
+            [830, 1170], /* paper size in inch x 100 */
+            10, /*margins in inch x 100 */
+            [255, 255, 255, 255], /*background color*/
+            2, /*draw frame line width in pixels*/
+            96/*Resolution in DPI*/
+            );
+
+            var windowContent = '<!DOCTYPE html>';
+            windowContent += '<html>'
+            windowContent += '<head><title>Print canvas</title></head>';
+            windowContent += '<body>'
+            windowContent += '<img src="' + dataUrl + '">';
+            windowContent += '</body>';
+            windowContent += '</html>';
+            var printWin = window.open('', '', 'width=830,height=600,scrollbars=yes,resizable=yes,menubar=yes,toolbar=yes');
+            printWin.document.open();
+            printWin.document.write(windowContent);
+            printWin.document.close();
+            printWin.focus();
+        }
+
+        // Activate / Deactivate ortho mode 
+        function ortho() {
+            if (orthomode.checked) { vdcanvas.SetActionOrthoMode(true); }
+            if (!orthomode.checked) { vdcanvas.SetActionOrthoMode(false); }
+
+        }
+
+        // Activate / Deactivate Perspective View mode 
+        function perspective() {
+
+            var layout = vdcanvas.GetActiveLayout();
+            if (!layout) return;
+            if (persp.checked) {
+                layout.PerspectiveMod = 1;
+            } 
+            if (!persp.checked) {
+                layout.PerspectiveMod = 0;
+            } 
+            setTimeout(vdcanvas.redraw);
+        }
+
+        // Drag and drop vds file into the canvas
+
+        function dragenter(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        function dragover(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        function drop(e) {
+
+            e.stopPropagation();
+            e.preventDefault();
+
+            var dt = e.dataTransfer;
+            var files = dt.files;
+            if (!files || files.length == 0)
+                return;
+            var f = files[0];
+
+            if (f.name.length == 0)
+                return;
+            var dot = f.name.lastIndexOf(".");
+            if (dot == -1)
+                return;
+            // in case of invalid file format 
+            var extension = f.name.substr(dot, f.name.length);
+            var extensionLow = extension.toLowerCase();
+            if (extensionLow != ".vds") {
+                alert("File can not open.Vector Draw Web Control can only load .vds file format");
+                return;
+            }
+            var reader = new FileReader();
+            reader.readAsText(f);
+            reader.onloadend = function (e) {
+                commands.open(e.target.result, f.name);
+            }
+        }
+
+        // In order to cancel process when ESC pressed
+        function doClose(e) // note: takes the event as an arg (IE doesn't)
+        {
+            if (!e) e = window.event; // fix IE
+
+            if (e.keyCode) // IE
+            {
+                if (e.keyCode == "27") window.close();
+            }
+            else if (e.charCode) // Netscape/Firefox/Opera
+            {
+                if (e.keyCode == "27") window.close();
+            }
+        }
+        document.onkeypress = doClose;
+        
+        // Draw cursor,pan,edrotate,zoom in-out,zoomextend icons 
+
+        //var icons = ["action", "pan", "rotate", "zoom", "extent"];
+        var icons = [1, 0, 0, 0];
+
+        function drawBitmaps() {
+            // Draw the two cursor icons
+            switch (icons[0]) {
+                case 0:
+                    document.getElementById("cursor").src = "./icons/cursor-outline.png";
+                    break;
+                case 1:
+                    document.getElementById("cursor").src = "./icons/cursor.png";
+                    break;
+            }
+            // Draw the two panning icons
+            switch (icons[1]) {
+                case 0:
+                    document.getElementById("pan").src = "./icons/5053-512.png";
+                    break;
+                case 1:
+                    document.getElementById("pan").src = "./icons/pan.png";
+                    break;
+            }
+            // Draw the two 3dRotate icons
+            switch (icons[2]) {
+                case 0:
+                    document.getElementById("rot").src = "./icons/3d_rotation_black_192x192.png";
+                    break;
+                case 1:
+                    document.getElementById("rot").src = "./icons/rotate.png";
+                    break;
+            }
+            // Draw the two zoom in-out icons
+            switch (icons[3]) {
+                case 0:
+                    document.getElementById("zoom").src = "./icons/zoom-out-icon-png-32.png";
+                    break;
+                case 1:
+                    document.getElementById("zoom").src = "./icons/zoomout.png";
+                    break;
+            }
+        }
+        function cursor() {
+            icons = [1, 0, 0, 0];
+            drawBitmaps();
+            vdcanvas.ActiveAction().Resume();
+        }
+        function pan() {
+
+            icons = [0, 1, 0, 0];
+            drawBitmaps();
+            vdcanvas.ActiveAction().Pause(vdConst.DEFAULT_SCROLL);
+        }
+        function rot() {
+            icons = [0, 0, 1, 0];
+            drawBitmaps();
+            vdcanvas.ActiveAction().Pause(vdConst.DEFAULT_ROTATE3D);
+        }
+        function zoom() {
+
+            icons = [0, 0, 0, 1];
+            drawBitmaps();
+            vdcanvas.ActiveAction().Pause(vdConst.DEFAULT_ZOOMSCALE);
+        }
+        function exten() {
+            vdcanvas.zoomExtents();
+            setTimeout(vdcanvas.redraw);
+        }
+        function cancelActiveAction() {
+            vdcanvas.ActiveAction().cancel();
+        }
+
+    /////////////////////////////////////// Dimension ////////////////////////////////////////////////////////////////////////////
+
+        function dimension() {
+            vdcanvas.scriptCommand.color('255,0,0');
+            vdcanvas.scriptCommand.dimvar('TYPE', 'align');
+            vdcanvas.scriptCommand.dimvar('BLK', 'vddim_default');
+            vdcanvas.scriptCommand.dimvar('TEXTH', '0.3');
+            vdcanvas.scriptCommand.dimvar('LUNITS', 'dec');
+            vdcanvas.scriptCommand.dimvar('PREC', '2');
+            vdcanvas.scriptCommand.dimvar('SZEROS', '0');
+            vdcanvas.scriptCommand.dimvar('LINECOLOR', 'byblock');
+            vdcanvas.scriptCommand.dimvar('EXTCOLOR', '0,255,0');
+            vdcanvas.scriptCommand.dimvar('TEXTCOLOR', '100,200,255');
+            vdcanvas.scriptCommand.dim();
+            setTimeout(vdcanvas.redraw);
+        }
+
+        //////////////////////////////// Views ///////////////////////////////////////////////////////////////////////////////////////////////
+
+        function fillViews() {
+
+            var combo = document.getElementById("ViewsCombo");
+            var inner = "<option value='" + "active_default" + "'>" + "default" + "</option>";
+
+            var views = vdcanvas.GetDocument().Views;
+            if (views) {
+                for (var i = 0; i < views.Items.length; i++) {
+                    inner += "<option value='" + views.Items[i].Name + "'>" + views.Items[i].Name + "</option>";
+                }
+            }
+            combo.innerHTML = inner;
+            var activeview = vdcanvas.GetActiveView();
+            if (!activeview)
+                combo.value = "active_default"; 
+            else
+                combo.value = activeview.Name;
+        }
+        function selectview() {
+            var combo = document.getElementById("ViewsCombo");
+            vdcanvas.SetActiveView(combo.value);
+        }
+
+        
+    </script>
+
+
+    <!--////////////////////////////// CSS ///////////////////////////////////////////////////-->
+    <style>
+        #popupHatch
+        {
+            position: absolute;
+            left: 20%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 300px;
+            height: 400px;
+        }
+        
+         #popupBlock
+        {
+            position: absolute;
+            left: 20%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 250px;
+            height: 150px;
+        } 
+        
+        #popupOsnaps
+        {
+            position: absolute;
+            left: 30%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 200px;
+            height: 350px;
+        }
+        
+        #popupOpenFile
+        {
+            position: absolute;
+            left: 30%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 350px;
+            height: 150px;
+        }
+        
+        #popupText
+        {
+            position: absolute;
+            left: 30%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 3px solid black;
+            width: 250px;
+            height: 250px;
+        }
+        
+        #popupImage
+        {
+            position: absolute;
+            left: 20%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 250px;
+            height: 150px;
+        }
+        #popupSave
+        {
+            position: absolute;
+            left: 20%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 250px;
+            height: 150px;
+        }
+        #popupAbout
+        {
+             position: absolute;
+            left: 20%;
+            top: 20%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 600px;
+            height: 700px;
+        }
+    </style>
+    <style>
+        .dropbtn
+        {
+            background-color: #264d73;
+            color: white;
+            padding: 10px;
+            font-size: 17px;
+            width: 90px;
+            border: 2px solid white;
+            cursor: pointer;
+        }
+        
+        .dropbtn:hover, .dropbtn:focus
+        {
+            background-color: #19334d;
+        }
+        
+        .dropdown
+        {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content
+        {
+            display: none;
+            position: absolute;
+            background-color: #336699;
+            min-width: 160px;
+            overflow: auto;
+            cursor: pointer;
+        }
+        
+        .dropdown-content a
+        {
+            color: white;
+            padding: 4px 3px;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .dropdown a:hover
+        {
+            background-color: #19334d;
+        }
+        
+        .show
+        {
+            display: block;
+        }
+    </style>
+</head>
+
+<!--//////////////////////////////////// POPUPS /////////////////////////////////////////////////////-->
+
+<body onload="vdrawInitPageLoad()" bgcolor="#6699cc">
+    
+     <div id="popupSave" style="background-color: #bfbfbf" align="center">
+        <br />
+        <br />
+        <br />
+        <a id="link" >Save downloaded file</a>
+        
+        <br />
+        <br />
+       
+        <input type="button" onclick="exitPopupSave()" value="EXIT" style="width: 120px" /> 
+       
+    </div>
+    <div id="popupAbout" style="border: 4px solid white; width: 600px; height: 550px; overflow: scroll; background-color: #9fbfdf;">
+        <p align="center"><b><u>This is an example for vdWebControl base actions</u></b></p>
+        <br/>
+        <b><u>Description</u></b>
+        <br/>This is a cad editor which can open,view,edit,print and save drawings.
+        <br/>Also by using the right sidebar we can change the active properties that are used.
+        <br/>
+        <br/>
+        <b><u>File button</u></b>
+        <br/>1) Choose drawing ::  Choose a .vds file from the disk.
+        <br/>2) OpenUrlFile  :: Open a .vds uploaded drawing by it's url path.
+        <br/>3) New :: New .vds drawing.
+        <br/>4) Save :: Save drawing as .vds file by downloading it in downloads folder by default.
+        <br/>5) Print :: Print drawing in a new html page.
+        <br/>
+        <br/>
+        <b><u>View button</u></b>
+        <br/>1) Wire2d :: Set wire2d view mode.
+        <br/>2) Wire3d :: Set wire3d view mode.
+        <br/>3) Shade :: Set shade view mode.
+        <br/>4) ShadeWebGl :: Set shadeWebGl view mode.
+        <br/>5) Render :: Set render view mode.
+        <br/>6) Redraw :: Redraw the whole drawing.
+        <br/>
+        <br/>
+        <b><u>3DViews button</u></b>
+        <br/>1) Top :: Top view.
+        <br/>2) Bottom:: Bottom view.
+        <br/>3) Right :: Right view.
+        <br/>4) Left :: Left view.
+        <br/>5) Front :: Front view.
+        <br/>6) Back :: Back view.
+        <br/>7) NE :: NE view.
+        <br/>8) NW :: NW view.
+        <br/>9) SE :: SE view.
+        <br/>10) SW :: SW view.
+        <br/>
+        <br/>
+        <b><u>Draw button</u></b>
+        <br/>1) Line :: Draw a new line.
+        <br/>2) Polyline:: Draw a new polyline.
+        <br/>3) SPline :: Draw a new Spline.
+        <br/>4) Rect :: Draw a new rectangle.
+        <br/>5) Arc :: Draw a new arc.
+        <br/>6) Circle :: Draw a new circle.
+        <br/>7) Text :: Draw a new text.
+        <br/>8) Image :: Draw a new image (which already exist in the drawing).
+        <br/>9) Block :: Draw a new block (which already exist in the drawing).
+        <br/>10) Hatch :: Draw a new hatch.
+        <br/>11) Dimension :: Add a new dimension block to the document.
+        <br/>
+        <br/>
+        <b><u>Edit button</u></b>
+        <br/>1) Erase :: Erase the selected entity.
+        <br/>2) Move :: Move the selected entity.
+        <br/>3) Copy :: Copy the selected entity.
+        <br/>4) Scale :: Scale the selected entity.
+        <br/>5) Rotate :: Rotate the selected entity.
+        <br/>6) Undo :: Undo the last item stored in the undo list.
+        <br/>7) Redo :: Redo the last item stored in the redo list.
+        <br/>8) Regen :: Regen the whole drawing.
+        <br/>
+        <br/>
+        <b><u>Inquiry button</u></b>
+        <br/>1) Distance :: Show the distance line between two points.
+        <br/>2) GetPointId :: Show the coordinates(x,y) of the clicked point.
+        <br/>
+        <br/>
+        <b><u>Image icons</u></b>
+        <br/>Most used in touchMode but also works properly in computer mode.
+        <br/>1) CursorIcon :: When selected activates user action. 
+        <br/>2) PanIcon :: When selected activates panning action. 
+        <br/>3) Rotate3dIcon :: When selected activates 3d rotation by one  finger.
+        <br/>4) ZoomIcon :: When selected activates zoomIn/zoomOut action by one  finger.
+        <br/>5) ZoomExtend :: When selected zoomExtends the drawing. 
+        <br/>
+        <br/>
+        <b><u>Right sidebar Options</u></b>
+        <br/>1) Layout :: Layouts of the drawing.
+        <br/>2) Layers :: Layers of the drawing.
+        <br/>3) LineTypes :: Line types of the drawing.
+        <br/>4) LineTypeScale :: Set the linetype scale.
+        <br/>5) LineWeight  :: Set the lineweight.
+        <br/>6) Tooltip :: Set the tooltip which all of the entities that they will be added will take it.
+        <br/>7) Color :: Set the color in (R,G,B,A) or byLayer.
+        <br/>8) OrthoMode :: Activate/Deactivate orthoMode.
+        <br/>9) OsnapMode :: Set tha active osnap(s).
+        <br/>10) Version :: VdWebControl version (year.dayOfTheYear.hours.minutes.version).                 
+        <br />
+        <br />   
+        <p align="center">    
+        <input type="button" onclick="exitPopupAbout()" value="EXIT" style="width: 130px" /> 
+        </p>
+        <br />        
+    </div>
+
+    <div id="popupText" style="background-color: #bfbfbf" align="center">
+        <br />
+        <br />
+        <b>TextStyle : </b>
+        <select id="textstylelist" style="width: 110px">
+            <option value=""></option>
+        </select>
+        <br />
+        <br />
+        <b>TextJustify : </b>
+        <select id="justifylist" style="width: 110px">
+            <option value="left_top">Left Top</option>
+            <option value="left_center">Left Center</option>
+            <option value="left_base">Left Base</option>
+            <option value="left_bottom">Left Bottom</option>
+            <option value="center_top">Center Top</option>
+            <option value="center_center">Center Center</option>
+            <option value="center_base">Center Base</option>
+            <option value="center_bottom">Center Bottom</option>
+            <option value="right_top">Right Top</option>
+            <option value="right_center">Right Center</option>
+            <option value="right_base">Right Base</option>
+            <option value="right_bottom">Right Bottom</option>
+        </select>
+        <br />
+        <br />
+        <b>TextHeight : </b>
+        <input id="textheight" type="text" style="width: 80px" value="1" />
+        <br />
+        <br />
+        <b>TextValue : </b>
+        <input id="textvalue" type="text" style="width: 120px" value="VectorDraw" />
+        <br />
+        <br />
+        <br />
+        <input type="button" onclick="closePopupText()" value="OK" style="width: 70px" />
+        <input type="button" onclick="ExitPopupText()" value="EXIT" style="width: 70px" />
+    </div>
+    <div id="popupOpenFile" style="background-color: #bfbfbf" align="center">
+        <br />
+        <br />
+        <br />
+        <input type="text" id="drawing" style="width: 110px" />
+        <input type="button" onclick="closePopupFileOpen()" value="OPEN" style="width: 90px" />
+        
+        <input type="button" onclick="exitPopupFileOpen()" value="EXIT" style="width: 90px" /> 
+       
+    </div>
+    <div id="popupOsnaps" style="background-color: #bfbfbf" align="center">
+        <br />
+           <div>
+                <p style="color: black">
+                    <b>OsnapMode </b>
+                </p>
+                <p style="color: black">
+                    <input id="endpoint" type="checkbox" />
+                    EndPoint
+                </p>
+                <p style="color: black">
+                    <input id="midpoint" type="checkbox" />
+                    MidPoint
+                </p>
+                <p style="color: black">
+                    <input id="centerpoint"  type="checkbox" />
+                    CenterPoint
+                </p>
+                <p style="color: black">
+                    <input id="near"  type="checkbox"  />
+                    Near
+                </p>
+                <p style="color: black">
+                    <input id="insert"  type="checkbox"  />
+                    Insert
+                </p>
+                <p style="color: black">
+                    <input id="node" type="checkbox" />
+                    Node
+                </p>
+           </div>
+        <br />
+        
+        <input type="button" onclick="closePopUpOsnaps()" value="OK" align="center" style="width: 100px" />
+    </div>
+    <div id="popupHatch" style="background-color: #bfbfbf" align="center">
+        <br />
+        <br />
+        <b style="color: black">HatchType </b>
+        <select id="HatchTypeCombo"  "width: 90px">
+            <option  onclick="commands.commandexecute(this)">Circle</option>
+            <option  onclick="commands.commandexecute(this)">Rectangle</option>
+            <option  onclick="commands.commandexecute(this)">Polyline</option>
+        </select>
+        <br />
+        <br />
+        <b style="color: black">HatchPatterns </b>
+        <select id="HatchPatternsCombo"  style="width: 90px"> </select>
+        <br />
+        <br />
+        <b style="color: black">BackroundColor(R,G,B) </b>
+        <input type="text" id="hatchBkColor" style="width: 90px" />       
+        <br />
+        <br />
+        <b style="color: black">FillColor(R,G,B) </b> 
+        <input type="text" id="hatchFillColor" value="ByLayer" style="width:90px" />       
+        <br />
+        <br />
+        <b style="color: black">Scale </b>
+        <input type="text" id="hatchScale" value="1" style="width: 90px" />       
+        <br />
+        <br />
+        <b style="color: black">Angle </b>
+        <input type="text" id="HatchAngle" value="0" style="width: 90px" />       
+        <br />
+        <br />
+        <p style="color: white" align="center">
+           <input type="checkbox" id="boundary" onchange="" /> <b style="color: black">DrawBoundary</b>                 
+        </p>
+        <br />
+        <br />
+        <br />
+        <input type="button" onclick="closePopupHatch()" value="OK" style="width: 80px" />
+        <input type="button" onclick="ExitPopupHatch()" value="EXIT" style="width: 80px" />
+        
+    </div>
+    <div id="popupBlock" style="background-color: #bfbfbf" align="center">
+        <br />
+        <br />
+        <b style="color: black">Blocks </b>
+        <select id="blocksCombo"  "width: 100px"></select>        
+        <br />
+        <br />
+        <br />
+        <br />
+        <input type="button" onclick="closePopupBlock()" value="OK" style="width: 70px" />
+        <input type="button" onclick="ExitPopupBlock()" value="EXIT" style="width: 70px" />
+    </div>
+    <div id="popupImage" style="background-color: #bfbfbf" align="center">
+        <br />
+        <br />
+        <b style="color: black">Select an Image: </b>
+        <select id="ImagesCombo" style="width: 110px">
+            <option value=""></option>
+        </select>
+        <br />
+        <br />
+        <br />
+        <input type="button" onclick="closePopupImage()" value="OK" style="width: 70px" />
+        <input type="button" onclick="ExitPopupImage()" value="EXIT" style="width: 70px" />
+    </div>
+<!--//////////////////////// POP UPS END /////////////////////////////////////////////////////////////////////-->
+
+    <div class="dropdown">
+        <button onclick="myFunction('menuFile')" class="dropbtn">File</button>
+        <div id="menuFile" class="dropdown-content">
+            <input type="file" name="files[]" onchange='handleFileSelect(this)' accept=".js,.vds" />
+            <a id="open" onclick="showPopUpOpenFile()">OpenUrlFile</a> 
+            <a id="new" onclick="newDrawing()">New</a>
+            <a onclick="vdcanvas.SaveDocument()">Save</a>
+         <a onclick="printCanvas()">Print</a>
+        </div>
+    </div>
+    <div class="dropdown">
+        <button onclick="myFunction('menuView')" class="dropbtn">
+            View</button>
+        <div id="menuView" class="dropdown-content">
+            <a onclick="view_wire2d()">Wire2d</a> 
+            <a onclick="view_wire3d()">Wire3d</a> 
+            <a onclick="view_shade()">Shade</a> 
+            <a onclick="view_shadegl()">ShadeWebGL</a> 
+            <a onclick="view_render()">Render</a>
+            <a onclick="view_rendergl()">RenderWebGL</a>
+             <a onclick="CmdZoomWindow()">zoomWindow</a>
+            <a onclick="redraw()">Redraw</a>
+        </div>
+    </div>
+     <div class="dropdown">
+        <button onclick="myFunction('menu3dviews')" class="dropbtn">
+            3DViews</button>
+        <div id="menu3dviews" class="dropdown-content">
+            <a onclick="topView()">Top</a> 
+            <a onclick="bottomView()">Bottom</a> 
+            <a onclick="rightView()">Right</a> 
+            <a onclick="leftView()">Left</a> 
+            <a onclick="frontView()">Front</a>
+            <a onclick="backView()">Back</a>
+            <a onclick="northEastView()">NE</a>
+            <a onclick="northWestView()">NW</a>
+            <a onclick="southEastView()">SE</a>
+            <a onclick="southWestView()">SW</a>
+        </div>
+    </div>
+    <div class="dropdown">
+        <button onclick="myFunction('menuDraw')" class="dropbtn">
+            Draw</button>
+        <div id="menuDraw" class="dropdown-content">
+            <a id="line" onclick="commands.commandexecute(this)">Line</a> 
+            <a id="pline" onclick="commands.commandexecute(this)">Polyline</a> 
+            <a id="spline" onclick="commands.commandexecute(this)">SPline</a>
+            <a id="rect" onclick="commands.commandexecute(this)">Rect</a> 
+            <a id="arc"onclick="commands.commandexecute(this)">Arc</a> 
+            <a id="circle" onclick="commands.commandexecute(this)">Circle</a>
+            <a id="text" onclick="showPopUpText()">Text</a> 
+            <a id="image" onclick="showPopUpImage()">Image</a> 
+            <a id="block" onclick="showPopUpBlock()">Block</a>
+            <a id="hatch" onclick="showPopUpHatch()">Hatch</a>
+            <a id="dm" onclick="dimension()">Dimension</a>
+        </div>
+    </div>
+    <div class="dropdown">
+        <button onclick="myFunction('menuEdit')" class="dropbtn">
+            Edit</button>
+        <div id="menuEdit" class="dropdown-content">
+            <a id="erase" onclick="commands.commandexecute(this)">Erase</a>
+            <a id="move" onclick="commands.commandexecute(this)">Move</a> 
+            <a id="copy" onclick="commands.commandexecute(this)">Copy</a> 
+            <a id="scale" onclick="commands.commandexecute(this)">Scale</a> 
+            <a id="rotate" onclick="commands.commandexecute(this)">Rotate</a>
+            <a>--------</a>
+            <a id="undo" onclick="commands.commandexecute(this)">Undo</a> 
+            <a id="redo" onclick="commands.commandexecute(this)">Redo</a> 
+            <a id="regen" onclick="commands.commandexecute(this)">Regen</a>
+        </div>
+    </div>
+    <div class="dropdown">
+        <button onclick="myFunction('menuInquiry')" class="dropbtn">
+            Inquiry</button>
+        <div id="menuInquiry" class="dropdown-content">
+            <a id="distance" onclick="commands.commandexecute(this)">Distance</a> 
+            <a id="point" onclick="commands.commandexecute(this)">GetPointId</a>
+        </div>         
+    </div>        
+    <div class="dropdown">
+        <button onclick="showPopupAbout()" class="dropbtn">
+            About</button>    
+    </div>
+     <p></p>
+     <div>
+       <input type="image" id="cursor" src="./icons/cursor-outline.png" onclick="cursor()" alt="Submit" width="60" height="50"/>
+       <input type="image" id="pan" src="./icons/5053-512.png" onclick="pan()" alt="Submit" width="70" height="50"/>
+       <input type="image" id="rot" src="./icons/3d_rotation_black_192x192.png" onclick="rot()" alt="Submit" width="60" height="50"/>
+       <input type="image" id="zoom" src="./icons/zoom-out-icon-png-32.png" onclick="zoom()" alt="Submit" width="60" height="50"/>
+       <input type="image" id="exten" src="./icons/zoom_to_extents-512.png" onclick="exten()" alt="Submit" width="60" height="50"/>
+       <input type="image" id="cancel" src="./icons/cancelIcon.png" onclick="cancelActiveAction()" alt="Submit" width="65" height="50"/>
+    </div>  
+    <table>
+        <tr>
+            <td>
+                <canvas id='canvas' width="560" height="480"> </canvas>
+            </td>
+            <td>
+                <div style="border: 4px solid white; width: 220px; height: 490px; background-color: #264d73;">
+                     <p style="color: white" align="center">
+                        <b>View </b>
+                        <select id="ViewsCombo" onchange="selectview()" style="width: 110px">
+                            <option value=""></option>
+                        </select>
+                    </p>
+                    <p style="color: white" align="center">
+                        <b>Layout </b>
+                        <select id="LayoutsCombo" onchange="selectLayout()" style="width: 110px">
+                            <option value=""></option>
+                        </select>
+                    </p>
+                    <p style="color: white" align="center">
+                        <b>Layers </b>
+                        <select id="LayersCombo" onchange="selectLayer()" style="width: 110px">
+                            <option value=""></option>
+                        </select></p>
+                    <p style="color: white" align="center">
+                        <b>LineTypes </b>
+                        <select id="LineTypesCombo" onchange="selectLineType(this)" style="width: 100px">
+                            <option></option>
+                        </select></p>
+                    <p style="color: white" align="center">
+                        <b>LineTypeScale</b>
+                        <input type="text" id="linetypescale" value="1.0" style="width: 70px" />
+                    </p>
+                    <p style="color: white" align="center">
+                        <b>LineWeight </b>
+                         <input type="text" id="lineweight" style="width: 90px" />
+                    </p>
+                   
+                     <p style="color: white" align="center">                        
+                        <b>ToolTip</b>
+                        <input type="text" id="tooltip" style="width: 120px" />
+                    </p>
+                     <p style="color: white" align="center">
+                        
+                        <b>Color(R,G,B)</b>
+                        <input type="text" id="color"  value="ByLayer" style="width: 80px" />
+                    </p>
+                    <p style="color: white" align="center">
+                         <input type="checkbox" id="orthomode" onchange="ortho()" /> <b style="color: white">OrthoMode</b>                 
+                    </p>
+                      <p style="color: white" align="center">
+                         <input type="checkbox" id="persp" onchange="perspective()" /> <b style="color: white">PerspectiveMode</b>                 
+                    </p>
+                    
+                     <p style="color: white" align="center">
+                        <input type="button" onclick="showPopUpOsnaps()" style="width: 100px" align="center" value="OsnapMode" />
+                    </p>                     
+                    <p style="color: white" align="center">
+                        <script> document.write('Version: ', vdversion); </script>
+                    </p>                      
+                </div>
+            </td>
+        </tr>
+    </table>
+    <p id="info">:</p>
+</body>
+</html>

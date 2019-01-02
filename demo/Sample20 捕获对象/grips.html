@@ -1,0 +1,510 @@
+<html>
+<head>
+	
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+    <script type="text/javascript">
+
+        // In this example we open a drawing that contains figures that support grips which are:vdLines,vdPolylines,vdTexts,vdRects,vdImages,vdInserts,vdCircles,vdArcs,vdEllipses,vdAttributes,vdPoints
+        // So the user can edit the vertices of each figure by clicking on it and drag it somewhere else. 
+
+
+        var vdcanvas;
+        function vdrawInitPageLoad() {//Intiallize the web control inside this function.It must be called inside onload event of this page
+
+            vdcanvas = vdmanager.AttachCanvas("canvas"); //create a new web control attached it to the canvas elemement
+            vdcanvas.GripManager.SelectMode = vdConst.GRIPMODE_AUTO + vdConst.GRIPMODE_SINGLE; //Set the mode to GRIPMODE_AUTO and GRIPMODE_SINGLE so the grips are automatically selected by vdraw control but only one entity of the document can have grips.
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument; //defines the function that will be fire when a web control document loaded.  	
+            vdcanvas.SelectDocument("vddocument.vds"); //load an existing document 
+
+        }
+        function _vdAfterOpenDocument() {//fire when a web control document loaded.   
+            SelectOsnaps();
+            vdcanvas.GripManager.aftermovegrip = _aftermovegrip;
+            vdcanvas.GripManager.filtergripentity = _filtergripentity;
+            vdcanvas.GripManager.gripselectionchanged = _gripselectionchanged;
+        }
+        function _gripselectionchanged(e) {
+            var count = e.sender.GripManager.count();
+            if (count == 0) document.getElementById('textInfo').value = "";
+        }
+        var inner = "";
+        function _filtergripentity(e) {
+            inner = "";
+            var entity = e.entity;
+            if (!entity || entity._t === undefined) return;
+            vdcanvas.GetEntityBBox(entity); //////////////////////////////////////////////
+            if (entity._t === vdConst.vdLine_code) {
+                inner = "";
+                var type = 'vdLine';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var sp = entity.StartPoint;
+                var ep = entity.EndPoint;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "StartPoint :" + sp[0].toFixed(4) + ',' + sp[1].toFixed(4) + ',' + sp[2].toFixed(4) + '\n' + "EndPoint: " + ep[0].toFixed(4) + ',' + ep[1].toFixed(4) + ',' + ep[2].toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdText_code) {
+                var type = 'vdText';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height;
+                var textString = entity.TextString;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n'  + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "TextHeight: " + height.toFixed(2) + '\n' + "TextString: " + textString + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdPolyline_code) {
+                var type = 'vdPolyline';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var vl = entity.VertexList.Items.length;
+                var vl1 = entity.VertexList.Items[0];
+                var vl2 = entity.VertexList.Items[1];
+                var vl3 = entity.VertexList.Items[2];
+                var vl4 = entity.VertexList.Items[3];
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Point_1: " + vl1[0].toFixed(3) + ',' + vl1[1].toFixed(3) + ',' + vl1[2].toFixed(3) + '\n' + "Point_2: " + vl2[0].toFixed(3) + ',' + vl2[1].toFixed(3) + ',' + vl2[2].toFixed(3) + '\n' + "Point_3: " + vl3[0].toFixed(3) + ',' + vl3[1].toFixed(3) + ',' + vl3[2].toFixed(3) + '\n' + "Point_4:" + vl4[0].toFixed(3) + ',' + vl4[1].toFixed(3) + ',' + vl4[2].toFixed(3) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdRect_code) {
+                var type = 'vdRect';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height.toFixed(3);
+                var width = entity.Width.toFixed(3);
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "Height: " + height + '\n' + "Width: " + width + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdImage_code) {
+                var type = 'vdImage';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height.toFixed(3);
+                var width = entity.Width.toFixed(3);
+                var id = entity.ImageDefinition;
+                var idn = vdcanvas.GetEntityItem(id).Name;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "Height: " + height + '\n' + "Width: " + width + '\n' + "Rotation: " + rotation + '\n' + "ImageDefinition: " + idn + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdInsert_code) {
+
+                var type = 'vdInsert';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var bn = entity.BlockRef.Name;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "Rotation: " + rotation + '\n' + "BlockReference Name: " + bn + '\n' + "ToolTip: " + toolTip;                
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdAttrib_code) {
+                var type = 'vdAttrib';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height;
+                var textString = entity.TextString;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "TextHeight: " + height.toFixed(2) + '\n' + "TextString: " + textString + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdAttribDef_code) {
+                var type = 'vdAttribDef';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height;
+                var textString = entity.TextString;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "TextHeight: " + height.toFixed(2) + '\n' + "TextString: " + textString + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdPoint_code) {
+                var type = 'vdPoint';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var ip = entity.InsertionPoint;
+                var h = entity.HandleId;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + h + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(4) + ',' + ip[1].toFixed(4) + ',' + ip[2].toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdCircle_code) {
+                var type = 'vdCircle';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var center = entity.Center;
+                var radius = entity.Radius;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Center: " + center[0].toFixed(4) + ',' + center[1].toFixed(4) + ',' + center[2].toFixed(4) + '\n' + "Radius: " + radius.toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdEllipse_code) {
+                var type = 'vdEllipse';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var center = entity.Center;
+                var starAnRad = entity.StartAngle;
+                var startAngle = vdgeo.RadiansToDegrees(starAnRad);
+                var endAnRad = entity.EndAngle;
+                var endAngle = vdgeo.RadiansToDegrees(endAnRad);
+                var majorLength = entity.MajorLength;
+                var minorLength = entity.MinorLength;
+                var majorAnRad = entity.MajorAngle;
+                var majorAngle = vdgeo.RadiansToDegrees(majorAnRad);
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Center: " + center[0].toFixed(4) + ',' + center[1].toFixed(4) + ',' + center[2].toFixed(4) + '\n' + "StartAngle: " + startAngle.toFixed(4) + '\n' + "EndAngle: " + endAngle.toFixed(4) + '\n' + "MajorLength: " + majorLength.toFixed(4) + '\n' + "MinorLength: " + minorLength.toFixed(4) + '\n' + "MajorAngle: " + majorAngle.toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdArc_code) {
+                var type = 'vdArc';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var center = entity.Center;
+                var radius = entity.Radius;
+                var starAnRad = entity.StartAngle;
+                var startAngle = vdgeo.RadiansToDegrees(starAnRad);
+                var endAnRad = entity.EndAngle;
+                var endAngle = vdgeo.RadiansToDegrees(endAnRad);
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Center: " + center[0].toFixed(4) + ',' + center[1].toFixed(4) + ',' + center[2].toFixed(4) + '\n' + "Radius: " + radius.toFixed(4) + '\n' + "StartAngle: " + startAngle.toFixed(4) + '\n' + "EndAngle: " + endAngle.toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+        }
+        function _aftermovegrip(e) {
+            inner = "";
+            var entity = e.entity;
+            if (!entity || entity._t === undefined) return;
+            vdcanvas.GetEntityBBox(entity); // In order to update the current position of the entity
+            if (entity._t === vdConst.vdLine_code) {
+                inner = "";
+                var type = 'vdLine';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var sp = entity.StartPoint;
+                var ep = entity.EndPoint;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "StartPoint :" + sp[0].toFixed(4) + ',' + sp[1].toFixed(4) + ',' + sp[2].toFixed(4) + '\n' + "EndPoint: " + ep[0].toFixed(4) + ',' + ep[1].toFixed(4) + ',' + ep[2].toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdText_code) {
+                var type = 'vdText';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height;
+                var textString = entity.TextString;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "TextHeight: " + height.toFixed(2) + '\n' + "TextString: " + textString + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdPolyline_code) {
+                var type = 'vdPolyline';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var vl = entity.VertexList.Items.length;
+                var vl1 = entity.VertexList.Items[0];
+                var vl2 = entity.VertexList.Items[1];
+                var vl3 = entity.VertexList.Items[2];
+                var vl4 = entity.VertexList.Items[3];
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Point_1: " + vl1[0].toFixed(3) + ',' + vl1[1].toFixed(3) + ',' + vl1[2].toFixed(3) + '\n' + "Point_2: " + vl2[0].toFixed(3) + ',' + vl2[1].toFixed(3) + ',' + vl2[2].toFixed(3) + '\n' + "Point_3: " + vl3[0].toFixed(3) + ',' + vl3[1].toFixed(3) + ',' + vl3[2].toFixed(3) + '\n' + "Point_4:" + vl4[0].toFixed(3) + ',' + vl4[1].toFixed(3) + ',' + vl4[2].toFixed(3) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdRect_code) {
+                var type = 'vdRect';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height.toFixed(3);
+                var width = entity.Width.toFixed(3);
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "Height: " + height + '\n' + "Width: " + width + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdImage_code) {
+                var type = 'vdImage';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height.toFixed(3);
+                var width = entity.Width.toFixed(3);
+                var id = entity.ImageDefinition;
+                var idn = vdcanvas.GetEntityItem(id).Name;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "Height: " + height + '\n' + "Width: " + width + '\n' + "Rotation: " + rotation + '\n' + "ImageDefinition: " + idn + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdInsert_code) {
+
+                var type = 'vdInsert';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var bn = entity.BlockRef.Name;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "Rotation: " + rotation + '\n' + "BlockReference Name: " + bn + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdAttrib_code) {
+                var type = 'vdAttrib';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height;
+                var textString = entity.TextString;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "TextHeight: " + height.toFixed(2) + '\n' + "TextString: " + textString + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdAttribDef_code) {
+                var type = 'vdAttribDef';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var rotInRadians = entity.Rotation;
+                var rotation = vdgeo.RadiansToDegrees(rotInRadians).toFixed(3);
+                var ip = entity.InsertionPoint;
+                var height = entity.Height;
+                var textString = entity.TextString;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(3) + ',' + ip[1].toFixed(3) + ',' + ip[2].toFixed(3) + '\n' + "TextHeight: " + height.toFixed(2) + '\n' + "TextString: " + textString + '\n' + "Rotation: " + rotation + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdPoint_code) {
+                var type = 'vdPoint';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var ip = entity.InsertionPoint;
+                var h = entity.HandleId;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + h + '\n' + "Layer Name: " + layerName + '\n' + "InsertionPoint: " + ip[0].toFixed(4) + ',' + ip[1].toFixed(4) + ',' + ip[2].toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdCircle_code) {
+                var type = 'vdCircle';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var center = entity.Center;
+                var radius = entity.Radius;
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Center: " + center[0].toFixed(4) + ',' + center[1].toFixed(4) + ',' + center[2].toFixed(4) + '\n' + "Radius: " + radius.toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdEllipse_code) {
+                var type = 'vdEllipse';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var center = entity.Center;
+                var starAnRad = entity.StartAngle;
+                var startAngle = vdgeo.RadiansToDegrees(starAnRad);
+                var endAnRad = entity.EndAngle;
+                var endAngle = vdgeo.RadiansToDegrees(endAnRad);
+                var majorLength = entity.MajorLength;
+                var minorLength = entity.MinorLength;
+                var majorAnRad = entity.MajorAngle;
+                var majorAngle = vdgeo.RadiansToDegrees(majorAnRad);
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Center: " + center[0].toFixed(4) + ',' + center[1].toFixed(4) + ',' + center[2].toFixed(4) + '\n' + "StartAngle: " + startAngle.toFixed(4) + '\n' + "EndAngle: " + endAngle.toFixed(4) + '\n' + "MajorLength: " + majorLength.toFixed(4) + '\n' + "MinorLength: " + minorLength.toFixed(4) + '\n' + "MajorAngle: " + majorAngle.toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+            else if (entity._t === vdConst.vdArc_code) {
+                var type = 'vdArc';
+                var handle = entity.HandleId;
+                var layerName = entity.LayerRef.Name;
+                var center = entity.Center;
+                var radius = entity.Radius;
+                var starAnRad = entity.StartAngle;
+                var startAngle = vdgeo.RadiansToDegrees(starAnRad);
+                var endAnRad = entity.EndAngle;
+                var endAngle = vdgeo.RadiansToDegrees(endAnRad);
+                var toolTip = entity.ToolTip;
+                inner += '\n' + "EntityType: " + type + '\n' + "Handle: " + handle + '\n' + "Layer Name: " + layerName + '\n' + "Center: " + center[0].toFixed(4) + ',' + center[1].toFixed(4) + ',' + center[2].toFixed(4) + '\n' + "Radius: " + radius.toFixed(4) + '\n' + "StartAngle: " + startAngle.toFixed(4) + '\n' + "EndAngle: " + endAngle.toFixed(4) + '\n' + "ToolTip: " + toolTip;
+                document.getElementById('textInfo').value = inner;
+                return;
+            }
+        }
+        function SelectOsnaps() {
+            var endpoint = document.getElementById("endpoint");
+            var midpoint = document.getElementById("midpoint");
+            var centerpoint = document.getElementById("centerpoint");
+            var near = document.getElementById("near");
+            var insert = document.getElementById("insert");
+            var node = document.getElementById("node");
+            var osnapmode = 0;
+
+            if (endpoint.checked) {
+                osnapmode += vdConst.OsnapMode_END;
+
+            }
+            if (midpoint.checked) {
+                osnapmode += vdConst.OsnapMode_MID;
+
+            }
+            if (centerpoint.checked) {
+                osnapmode += vdConst.OsnapMode_CEN;
+
+            }
+            if (near.checked) {
+                osnapmode += vdConst.OsnapMode_NEA;
+
+            }
+            if (insert.checked) {
+                osnapmode += vdConst.OsnapMode_INS;
+
+            }
+            if (node.checked) {
+                osnapmode += vdConst.OsnapMode_NODE;
+
+            }
+
+            vdcanvas.SetOsnapMode(osnapmode);
+
+        }
+        function showPopUpOsnaps() {
+            document.getElementById("popupOsnaps").style.display = "block";
+        }
+
+        function closePopUpOsnaps() {
+            document.getElementById("popupOsnaps").style.display = "none";
+            SelectOsnaps();
+        }
+        function ortho() {
+            if (orthomode.checked) { vdcanvas.SetActionOrthoMode(true); }
+            if (!orthomode.checked) { vdcanvas.SetActionOrthoMode(false); }
+
+        }
+    </script>
+    <style type="text/css">
+    #popupOsnaps
+        {
+            position: absolute;
+            left: 42.5%;
+            top: 10%;
+            display: none;
+            background-color: white;
+            border: 2px solid black;
+            width: 200px;
+            height: 350px;
+        }    
+    #textInfo
+        {
+            height: 350px;
+            width: 280px;
+        }
+    </style>
+</head>
+
+<body onload="vdrawInitPageLoad()"  bgcolor="#264d73">
+  <div id="popupOsnaps" style="background-color: #bfbfbf" align="center">
+        <br />
+           <div>
+                <p style="color: black">
+                    <b>OsnapMode </b>
+                </p>
+                <p style="color: black">
+                    <input id="endpoint" type="checkbox" />
+                    EndPoint
+                </p>
+                <p style="color: black">
+                    <input id="midpoint" type="checkbox" />
+                    MidPoint
+                </p>
+                <p style="color: black">
+                    <input id="centerpoint"  type="checkbox" />
+                    CenterPoint
+                </p>
+                <p style="color: black">
+                    <input id="near"  type="checkbox"  />
+                    Near
+                </p>
+                <p style="color: black">
+                    <input id="insert"  type="checkbox"  />
+                    Insert
+                </p>
+                <p style="color: black">
+                    <input id="node" type="checkbox" />
+                    Node
+                </p>
+           </div>
+        <br />
+        
+        <input type="button" onclick="closePopUpOsnaps()" value="OK" align="center" style="width: 100px" />
+    </div>
+  <table>
+        <tr>
+            <td>
+                <canvas id='canvas' width="1000" height="650"> </canvas>
+            </td>
+            <td>
+                <div style="border: 4px solid white; width: 320px; height: 640px; background-color: #264d73;">
+                    <p style="color: white" align="center">                        
+                        <b>Entity Properties</b>
+                    </p>
+                     <p style="color: white" align="center">    
+                        <textarea id="textInfo" rows="80"></textarea>                    
+                    </p><br />
+					<p style="color: white" align="center">
+                        <input type="button" onclick="showPopUpOsnaps()" style="width: 110px; height: 40px;" align="center" value="OsnapMode" />
+                    </p><br />
+                    <p style="color: white" align="center">
+                         <input type="checkbox" id="orthomode" onchange="ortho()" /> <b style="color: white">OrthoMode</b>                 
+                    </p>                                                          
+                </div>
+            </td>
+        </tr>
+    </table>     
+         <font color="white">Click on an entity in order to appear the grips and be able to manage them and click again on the entity or press ESC in order to disappear the grips</font>
+</p>
+</body>
+</html>

@@ -1,0 +1,231 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='..\webControl\vdWebControl.js'></script>
+
+    <script type="text/javascript">
+        function _vdAfterOpenDocument(e) {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+
+            var blocks = vdcanvas.GetDocument().Blocks;
+            for (var d = 0; d < SelectBlock.length; d++) {
+                SelectBlock.remove(0);
+            }
+            for (var d = 0; d < blocks.Items.length; d++) {
+                var option = document.createElement("option");
+                option.text = vdcanvas.GetDictItem(blocks, blocks.Items[d]).Name + "";
+                try {
+                    // for IE earlier than version 8
+                    SelectBlock.add(option, SelectBlock.options[null]);
+                }
+                catch (e) {
+                    SelectBlock.add(option, null);
+                }
+            }
+        }
+
+        function vdrawInitPageLoad() {
+            vdgeo.CURVERESOLUTION = 500;
+            vdmanager.AttachCanvas('canvas', 400, 400);
+            document.getElementById('noJavascript').innerHTML = "";
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdcanvas.SetDefaultTimeOutMilliseconds(400);
+            vdcanvas.vdprogress = _progress;
+            ExtendCancvas();
+            vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS;
+            Open();
+        }
+        
+        function _progress(evt) {
+            if (evt.percent < 0) printInfo('info2', evt.Info);
+            else if (evt.percent >= 100) printInfo('info2', ' ');
+            else printInfo('info2', evt.Info + " " + evt.percent.toString() + "%");
+        }
+        this.printInfo = function(infoId, text) {
+
+            var info = document.getElementById(infoId);
+            if (info == undefined) return;
+            info.innerHTML = text;
+        }
+        function Open() {
+            vdmanager.vdrawObject('canvas').SelectDocument('../Drawings/Example2EmptyDoc.vds')
+        }
+        function ExtendCancvas() {
+            var winW = 640, winH = 480;
+            if (document.body && document.body.offsetWidth) {
+                winW = document.body.offsetWidth;
+                winH = document.body.offsetHeight;
+            }
+            if (document.compatMode == 'CSS1Compat' &&
+                document.documentElement &&
+                document.documentElement.offsetWidth) {
+                winW = document.documentElement.offsetWidth;
+                winH = document.documentElement.offsetHeight;
+            }
+            if (window.innerWidth && window.innerHeight) {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+            }
+            vdmanager.vdrawObject('canvas').SetSize(winW - 30, winH - 235);
+        }
+
+        function AddText() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var TXT = Text1.value + "";
+            var vdText = vdcanvas.AddText(TXT, 3, vdgeo.newpoint(2, 3, 0), 6, 1, 0.0, false);
+            vdText.PenColor = { ColorIndex: 0, ColorFlag: null };
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function AddInsert() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var insertname = SelectBlock.value + "";
+            var vdBlock = vdcanvas.AddBlockSymbol(insertname, vdcanvas.GetActiveLayout().ViewCenter, 10, 0.0, false);
+            vdBlock.PenColor = { ColorIndex: 1, ColorFlag: null };
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function AddLine() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var vdLine = vdcanvas.AddLine(vdgeo.newpoint(-20, -20, 0), vdgeo.newpoint(40, 40, 0), false);
+            vdLine.PenColor = {ColorIndex : 2 , ColorFlag : null};
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function AddCircle() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var circle = vdcanvas.AddCircle(vdgeo.newpoint(0, 0, 0), 40, false);
+            circle.LineType = 'h_' + vdcanvas.FindLineType('center2').HandleId;
+            circle.LineTypeScale = 10.0;
+            circle.PenColor = { ColorIndex: 3, ColorFlag: null };
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function AddEllipse() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var vdEllipse = vdcanvas.AddEllipse(vdgeo.newpoint(10, 10, 0), 10, 7, vdgeo.DegreesToRadians(90), vdgeo.DegreesToRadians(0), vdgeo.DegreesToRadians(360), false);
+            vdEllipse.PenColor = { ColorIndex: 4, ColorFlag: null };
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function AddPolyline() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var vertexes = [vdgeo.newvertex(-20, -20, 0 , 0),vdgeo.newvertex(-20, 10, 0 , 0), vdgeo.newvertex(30, 15, 0 , 0), vdgeo.newvertex(30, 0, 0 , 0)];
+            var vdPolyline = vdcanvas.AddPolyline(vertexes, false);
+            vdPolyline.PenColor = { ColorIndex: 5, ColorFlag: null };
+            vdPolyline.Flag = 1;
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function AddArc() {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var vdArc = vdcanvas.AddArc(vdgeo.newpoint(-20, 0, 0), 5, vdgeo.DegreesToRadians(0), vdgeo.DegreesToRadians(135), false);
+            vdArc.PenColor = { ColorIndex: 6, ColorFlag: null };
+            vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+        }
+        function setActiveHatch(param) {
+            var vdcanvas = vdmanager.vdrawObject('canvas');
+            var BkColor = vdConst.createNewColor("0,0,0,0"); //transparent
+            var FillColor = vdConst.createNewColor("byblock");
+            var hPatrn = vdcanvas.createNewHatchProperties(eval(param), BkColor, FillColor);
+            vdcanvas.SetActiveHatchProperties(hPatrn);
+        }
+        
+    </script>
+
+    </head>
+<body onload="vdrawInitPageLoad()">
+    <table>
+        <tr>
+            <td>
+                This is a basic sample that is intended to demonstrate basic functionality of our
+                web javascript solution.<br />
+                So in this sample you can add a text and a vdInsert (block instance) from the blocks
+                collection , a line , a circle , an ellipse and a polyline.<br />
+                Note that an empty Document has been loaded that contains some blocks.Latin characters are by default added , if you want extra characters (like chinese) you must add them to the Document before exporting it.<br />
+                Also note that these added entities are added locally to the control and are not being updated to any drawing on the web.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                 <center></br>ActiveHatchProperties: 
+                     <select onchange="setActiveHatch(this.value)"> 
+                        <option value="vdConst.FillModeNone">None</option>
+                        <option value="vdConst.FillModeSolid">FillModeSolid</option>
+                        <option value="vdConst.FillModeHatchBDiagonal">FillModeHatchBDiagonal</option>
+                        <option value="vdConst.FillModeHatchCross">FillModeHatchCross</option>
+                        <option value="vdConst.FillModeHatchDiagCross">FillModeHatchDiagCross</option>
+                        <option value="vdConst.FillModeHatchFDiagonal">FillModeHatchFDiagonal</option>
+                        <option value="vdConst.FillModeHatchHorizontal">FillModeHatchHorizontal</option>
+                        <option value="vdConst.FillModeHatchVertical">FillModeHatchVertical</option>
+                        <option value="vdConst.FillModeSingleHatch">FillModeSingleHatch</option>
+                        <option value="vdConst.FillModeDoubleHatch">FillModeDoubleHatch</option>
+                    </select>
+                </center> 
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <canvas id='canvas'> </canvas>
+                <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <table width="95%">
+        <tr>
+            <td  width="20%" >
+                <button onclick="AddLine()" style="height: 25px; width: 100px">
+                    Add Line</button>
+            </td>
+            <td  width="20%" >
+                <button onclick="AddCircle()" style="height: 25px; width: 100px">
+                    Add Circle</button>
+            </td>
+            <td  width="20%" >
+                <button onclick="AddEllipse()" style="height: 25px; width: 100px">
+                    Add Ellipse</button>
+            </td>
+            <td  width="20%" >
+                <button onclick="AddArc()" style="height: 25px; width: 100px">
+                    Add Arc</button>
+            </td>
+            <td  width="20%" >
+                <button onclick="AddPolyline()" style="height: 25px; width: 100px">
+                    Add Polyline</button>
+            </td>
+        </tr>
+        <tr>
+            <td align="right">
+                <button onclick="AddText()" style="height: 25px; width: 100px">
+                    Add Text</button>
+            </td>
+            <td>
+                <input id="Text1" type="text" value="hello world !" />
+            </td>
+        <td>&nbsp;&nbsp;</td>
+            <td align="right">
+                <button onclick="AddInsert()" style="height: 25px; width: 100px">
+                    Add Insert</button>
+            </td>
+            <td>
+                <select id="SelectBlock">
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td align="left" colspan="5">
+                <label id="Label2">  Info :</label><label id="info2"></label></td>
+        </tr>
+    </table>
+</body>
+</html>

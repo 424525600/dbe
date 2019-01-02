@@ -1,0 +1,326 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+	<script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+	<script type="text/javascript" src='../webControl/commands.js'></script>
+
+    <script type="text/javascript">
+
+        var lastRedrawTime = 0;
+        function _vdmousemove(e) {
+            e.Cancel = true;
+            cCenter[0] = e.x;
+            cCenter[1] = e.y;
+            RestartDraw();
+        }
+        //pullIn is true while the user presses the mouse button and all the dots are attracted towards the magnet.
+        var pullIn = false;
+        function _vdmousedown(e) {
+            e.Cancel = true;
+            if (!('ontouchstart' in document.documentElement)) {
+                pullIn = true;
+                speed = speed * 10;
+            }
+            cCenter[0] = e.x;
+            cCenter[1] = e.y;
+            RestartDraw();
+        }
+        function _vdmouseup(e) {
+            pullIn = false;
+            var ds = document.getElementById("dotsSpeed");
+            value = parseInt(ds.innerHTML);
+            speed = value / 100;
+            RestartDraw();
+        }
+
+        //We're using this function to reinitiate the recursive function.
+        function RestartDraw() {
+            if (MaxMovement < 0.01) {
+                MaxMovement = 1000;
+                //PlaceDots is the main function in this example, it moves the dots around depending on the position of the magnet.
+                //All calculations are being done in this function.
+                PlaceDots();
+            }
+        }
+        var radius;
+        var cCenter;
+        var lastRedraw;
+        var MaxMovement;
+        //PlaceDots is the main function in this example, it moves the dots around depending on the position of the magnet.
+        //All calculations are being done in this function.		
+        function PlaceDots() {
+            //MaxMovement is used to ensure that the dots won't do any unnecessary mini movement.
+            if (MaxMovement < 0.01) return;
+
+            //The following block of code ensures that there will be a maximum recursion rate of 15 times a second.
+            //That way the processor won't be too busy during the execution of this example.
+            d = new Date();
+            var time = d.getTime();
+            if (time - lastRedraw < 70) {
+                setTimeout(function() { PlaceDots() }, 70 - (time - lastRedraw));
+                return;
+            }
+            lastRedraw = d.getTime();
+
+            //cFig is the magnet (big circle in the example) and its position is determinedby the mouse position. The cCenter point is defined in the 
+            //mouse move event.
+            cFig.Center = cCenter;
+            upFig(cFig, false);
+            MaxMovement = 0;
+            //This following for loop is the heart of this example. In it, every calculation and condition is checked so that the dots will be moved accordingly.
+            for (var i = 1; i < activelayout.Entities.Items.length; i++) {
+                element = vdcanvas.GetEntityItem(activelayout.Entities.Items[i]);
+                var pointTo;
+                var dist = 0;
+                var angle;
+                var newCenter;
+                if (pullIn) {
+                    pointTo = cFig.Center;
+                    dist = vdgeo.Distance2D(element.Center, pointTo);
+                    var factor = (26 - dist) / 13.0;
+                    angle = vdgeo.GetAngle(element.Center, pointTo);
+                    newCenter = vdgeo.pointPolar(element.Center, angle, speed * factor);
+                }
+                else {
+                    pointTo = DotCenters[i];
+                    dist = vdgeo.Distance2D(element.Center, pointTo);
+                    angle = vdgeo.GetAngle(element.Center, pointTo);
+                    var distToMagnet = Math.max(vdgeo.Distance2D(element.Center, cFig.Center), 0);
+                    newCenter = vdgeo.pointPolar(element.Center, angle, Math.min(distToMagnet, Math.min(dist, speed)));
+                }
+
+                var distToMagnet = vdgeo.Distance2D(newCenter, cFig.Center);
+                if (distToMagnet <= radius) {
+                    angle = vdgeo.GetAngle(cFig.Center, newCenter);
+                    newCenter = vdgeo.pointPolar(element.Center, angle, radius - distToMagnet); //Math.min(rdist, speed));
+                }
+                var rDist = vdgeo.Distance2D(element.Center, newCenter);
+                MaxMovement = Math.max(rDist, MaxMovement);
+                element.Center = newCenter;
+                upFig(element);
+            }
+
+            vdcanvas.redraw();
+            vdcanvas.canvas.style.cursor = "none";
+            //SetTimeout ensures that our browser will be fully responsive.
+            setTimeout(function() { PlaceDots() }, 0);
+        }
+
+        var DotCenters = [];
+        var speed = 0.01;
+        var activelayout;
+        var cFig;
+        function _vdAfterOpenDocument(e) {
+            activelayout = vdcanvas.GetActiveLayout();
+            activelayout.RenderMode = vdConst.RENDERMODE_WIRE_2d;
+            //We are storing all the intial positions of all the circles in an Array, so that we will know where to get them back to.
+            for (var i = 0; i < activelayout.Entities.Items.length; i++) {
+                if (vdcanvas.GetEntityItem(activelayout.Entities.Items[i]).Center != undefined)
+                    DotCenters.push(vdcanvas.GetEntityItem(activelayout.Entities.Items[i]).Center);
+                else
+                //Normally, we should never end up inside this else statement.
+                    DotCenters.push(new vdgeo.newpoint(0, 0, 0));
+            }
+            var i = 0;
+            do {
+                //The magnet (the big circle in our example) is the first vdCircle entity in our document.
+                cFig = vdcanvas.GetEntityItem(activelayout.Entities.Items[i]);
+                i++;
+            } while (cFig.Center == undefined);
+            radius = cFig.Radius + 0.1;
+            cCenter = cFig.Center;
+
+            vdcanvas.vdmousemove = _vdmousemove;
+            vdcanvas.vdmousedown = _vdmousedown;
+            vdcanvas.vdmouseup = _vdmouseup;
+
+            //Now we are ready to start our little game. Calling PlaceDots will start the timer and our example will come to life.
+            PlaceDots();
+        }
+        //Everytime we change an entity's properties we need to update it so for the changes to be shown.
+        //Since we don't need to changed anything more than the position of the entities in our example, we do this trick and simply set the ECSMatrix as undefined.
+        function upFig(entity, recalculate) {
+            entity.EcsMatrix = undefined;
+        }
+
+        var vdcanvas;
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('display', 600, 450);
+            document.getElementById('noJavascript').innerHTML = "";
+            vdcanvas = vdmanager.vdrawObject('display');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdmanager.vdrawObject('display').SelectDocument("../Drawings/circles.vds");
+
+            //The following lines are for increasing speed to our example.
+            vdcanvas.SetActionLineWidth(2);
+            vdcanvas.SetActionFillColor(new Array(0, 0, 255, 100));
+            vdcanvas.SetActionCrossFillColor(new Array(0, 255, 0, 100));
+            vdcanvas.SetEnableSelection(false);
+            vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE;
+        }
+
+        //The following functions are used to alter the speed of our dots and the size of our magnet.
+        function alterSpeed(step, absValue) {
+            var ds = document.getElementById("dotsSpeed");
+            value = parseInt(ds.innerHTML);
+            value += step;
+            if (absValue != undefined) value = absValue;
+            if (value < 0) return;
+            ds.innerHTML = value.toString();
+            speed = value / 100;
+        }
+        function alterBrushSize(step, absValue) {
+            var bs = document.getElementById("brushSize");
+            value = parseInt(bs.innerHTML);
+            value += step;
+            if (absValue != undefined) value = absValue;
+            if (value < 0) return;
+            bs.innerHTML = value.toString();
+            cFig.Radius = value + 0.1;
+            radius = value + 0.1;
+            vdcanvas.UpdateFig(cFig);
+            vdcanvas.redraw();
+        }
+        function HarmonicFlow() {
+            alterSpeed(0, 5);
+            alterBrushSize(0, 2);
+        }
+        function FastTrack() {
+            alterSpeed(0, 15);
+            alterBrushSize(0, 3);
+        }
+        function Electricity() {
+            alterSpeed(0, 50);
+            alterBrushSize(0, 1);
+        }
+    </script>
+<style type="text/css">
+.button {
+	-moz-box-shadow:inset 0px 1px 0px 0px #dcecfb;
+	-webkit-box-shadow:inset 0px 1px 0px 0px #dcecfb;
+	box-shadow:inset 0px 1px 0px 0px #dcecfb;
+	background-color:#bddbfa;
+	text-indent:0;
+	border:1px solid #84bbf3;
+	display:inline-block; 
+	color:#ffffff;
+	font-family:Arial;
+	font-size:15px;
+	font-weight:bold;
+	font-style:normal;
+	height:20px;
+	line-height:20px;
+	width:30px;
+	text-decoration:none;
+	text-align:center;
+	text-shadow:1px 1px 0px #528ecc;
+}.button:hover {
+	background-color:#80b5ea;
+}.button:active {
+	position:relative;
+	top:1px;
+}
+.tag {
+	-moz-box-shadow:inset 0px 1px 0px 0px #bbdaf7;
+	-webkit-box-shadow:inset 0px 1px 0px 0px #bbdaf7;
+	box-shadow:inset 0px 1px 0px 0px #bbdaf7;
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#79bbff', endColorstr='#378de5');
+	background-color:#79bbff;
+	display:inline-block;
+	font-family:Arial;
+	font-size:15px;
+	font-weight:normal;
+	font-style:normal;
+	height:40px;
+	line-height:40px;
+	width:100px;
+	text-decoration:none;
+	text-align:center;
+}
+.buttonWide {
+	-moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
+	-webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
+	box-shadow:inset 0px 1px 0px 0px #ffffff;
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #f9f9f9), color-stop(1, #e9e9e9) );
+	background:-moz-linear-gradient( center top, #f9f9f9 5%, #e9e9e9 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#f9f9f9', endColorstr='#e9e9e9');
+	background-color:#f9f9f9;
+	-webkit-border-top-left-radius:0px;
+	-moz-border-radius-topleft:0px;
+	border-top-left-radius:0px;
+	-webkit-border-top-right-radius:0px;
+	-moz-border-radius-topright:0px;
+	border-top-right-radius:0px;
+	-webkit-border-bottom-right-radius:0px;
+	-moz-border-radius-bottomright:0px;
+	border-bottom-right-radius:0px;
+	-webkit-border-bottom-left-radius:0px;
+	-moz-border-radius-bottomleft:0px;
+	border-bottom-left-radius:0px;
+	text-indent:0;
+	border:1px solid #dcdcdc;
+	display:inline-block;
+	color:#666666;
+	font-family:Arial;
+	font-size:15px;
+	font-weight:normal;
+	font-style:normal;
+	height:65px;
+	line-height:65px;
+	width:125px;
+	text-decoration:none;
+	text-align:center;
+	text-shadow:1px 1px 0px #ffffff;
+}
+.buttonWide:hover {
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #e9e9e9), color-stop(1, #f9f9f9) );
+	background:-moz-linear-gradient( center top, #e9e9e9 5%, #f9f9f9 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#e9e9e9', endColorstr='#f9f9f9');
+	background-color:#e9e9e9;
+}.buttonWide:active {
+	position:relative;
+	top:1px;
+</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+ <table align="center" border="0" style="text-align:center;" >
+	<tr> <td colspan="10">Press a mouse button to activate the Magnet. </td> </tr>
+	<tr> <td colspan="10">
+	        <canvas id='display' style='cursor: "none"'> </canvas> 
+	        <div id='noJavascript'>
+                    <div style="height: 400px; width: 500px; background-color:#b0c4de;">                    
+                    The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+                    </div>
+                </div>
+	     </td> 	
+	</tr>
+	<tr> 	
+		<td colspan="3"><button class="buttonWide" onclick="HarmonicFlow()"}>Harmonic Flow</button></td>
+		<td colspan="4"><button class="buttonWide" onclick="FastTrack()"}>Fast Track</button></td>
+		<td colspan="3"><button class="buttonWide" onclick="Electricity()"}>Electricity</button></td>
+	</tr>
+	<tr> 
+		<td width="14px"> </td>
+		<td colspan="4" > <p >Dots Speed</p> </td> 
+		<td colspan="4"> <p >Brush Size</p></td> 
+		<td width="23px"> </td>
+	</tr>
+	<tr>
+		<td></td>
+		<td align="right"><button class="button" onclick="alterSpeed(-1)"}><</button></td>
+		<td width="30px"> <div id="dotsSpeed">1</div> </input></td>
+		<td align="left"><button class="button" onclick="alterSpeed(1)">></button></td>
+		<td></td>
+		<td></td>
+		<td align="right"><button class="button" onclick="alterBrushSize(-1)"><</button></td>
+		<td width="30px"><div id="brushSize">1</div> </td>
+		<td align="left"><button class="button" onclick="alterBrushSize(1)">></button></td>
+		<td></td>
+	</tr>
+ </table>
+</body>
+</html>

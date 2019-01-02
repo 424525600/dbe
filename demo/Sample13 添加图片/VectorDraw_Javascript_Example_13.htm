@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+
+    <script type="text/javascript">
+
+        function _vdAfterOpenDocument(e) {
+            LoadDocumentImages();
+        }
+        var vdcanvas;
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('canvas', 380, 480);
+            vdcanvas = vdmanager.vdrawObject('canvas');
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+            vdcanvas.MaxImageSize = 299*299; //This property controls the maximum possible size of our images. Default value is 552960(768 * 720)
+
+            vdcanvas.SelectDocument("../Drawings/AddImage.vds");
+        }    
+		function LoadDocumentImages()
+		{
+			vdcanvas = vdmanager.vdrawObject('canvas');
+			var images = vdcanvas.GetDocument().Images;
+			//This for-loop iterates through all the images of the document. The same method can be used with the Blocks, Linetypes and the rest of the collections.
+			for (var d = 0; d < images.Items.length; d++) {
+				var entity = vdcanvas.GetDictItem(images, images.Items[d]);				
+				var imgs = document.getElementById("images");				
+				var img = "<img name='" + entity.Name + "' src=" + "data:image/jpg;base64," + entity.jpegData + " width='100' onclick='AddImage(this.name);' ></img>"				
+				imgs.innerHTML += img;
+			}
+		}
+		//This function is invoked by the "onchange" event of the HTML input tag.
+		function handleFileSelect(e){
+			var files = e.files; // FileList object
+            var reader = new FileReader(); // FileReader object
+            var f = files[0];
+            reader.onloadend = function() {				
+				var bttn = document.getElementById("AddImage2");
+				bttn.onclick = function() {
+					//The Date function is used in order to pass a distinct tablename for the inserted image. If the tablename was already in the images collection, the
+					//image of the collection would be used instead.
+					AddImage('demo '+new Date(), reader.result);
+				}
+            }
+            reader.readAsDataURL(f);
+		}
+		//The path should always be a relative path due to Cross-origin issues.
+		function AddFromNet(path)
+		{
+			var tmp_img = document.createElement("img");
+			tmp_img.src = path;
+			tmp_img.onload = function(){
+				
+				var canvas = document.createElement("canvas");
+				canvas.width = tmp_img.width;
+				canvas.height = tmp_img.height;
+
+				// Copy the image contents to the canvas
+				var ctx = canvas.getContext("2d");
+				ctx.drawImage(tmp_img, 0, 0);
+				var dataURL = canvas.toDataURL("image/png");
+				
+				AddImage('Demo '+ new Date(), dataURL);
+			}
+		}
+		function AddImage(tableName, image)
+		{
+			var name = tableName;
+			var position = [0, 0, 0];
+			var imageScale = 5;
+			var rotation = 0;
+			var redraw = true;
+			
+			vdcanvas.AddImage(name, image, position, imageScale, rotation, redraw);
+		}
+    </script>
+
+	
+	<style>
+	img{
+		padding: 5px;
+		vertical-align:middle;
+	}
+	img:hover{
+		cursor: hand;
+	}
+	.textbox {
+		width: 90%;
+		display: block;
+		-webkit-box-sizing: content-box;
+		-moz-box-sizing: content-box;
+		box-sizing: content-box;
+		padding: 1px 20px;
+		margin-top:5px;
+		margin-bottom:5px;
+		border: 5px solid #0a1160;
+		-webkit-border-radius: 15px;
+		border-radius: 15px;
+		font: normal 16px/normal "Times New Roman", Times, serif;
+		color: rgba(43,43,43,1);
+		-o-text-overflow: clip;
+		text-overflow: clip;
+		background: rgba(252,252,252,1);
+		text-shadow: 1px 1px 0 rgba(255,255,255,0.66) ;
+		-webkit-transition: all 200ms cubic-bezier(0.42, 0, 0.58, 1);
+		-moz-transition: all 200ms cubic-bezier(0.42, 0, 0.58, 1);
+		-o-transition: all 200ms cubic-bezier(0.42, 0, 0.58, 1);
+		transition: all 200ms cubic-bezier(0.42, 0, 0.58, 1);
+	}
+	.General-div {
+		-webkit-box-sizing: content-box;
+		-moz-box-sizing: content-box;
+		box-sizing: content-box;
+		width: 400px;
+		margin-bottom: 10px;		
+		content: ;
+		top: auto;
+		right: auto;
+		bottom: auto;
+		left: auto;
+		padding: 20px;
+		overflow: hidden;
+		outline: none;
+		border: 1px solid rgba(90,90,90,1);
+		-webkit-border-radius: 15px;
+		border-radius: 15px;
+		font: normal 16px/1 "Times New Roman", Times, serif;
+		color: rgba(90,90,90,1);
+		text-decoration: none;
+		text-align: center;
+		text-indent: 0;
+		-o-text-overflow: ellipsis;
+		text-overflow: ellipsis;
+		letter-spacing: 0;
+		white-space: normal;
+		word-spacing: 0;
+		word-wrap: ;
+		background: #d3f2ff;
+		-webkit-box-shadow: 1px 1px 1px 0 rgba(0,0,0,0.3) ;
+		box-shadow: 1px 1px 1px 0 rgba(0,0,0,0.3) ;
+		text-shadow: 1px 1px 1px rgba(0,0,0,0.2) ;
+	}
+	</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+    <table align="center">
+        <tr>
+			<td>
+				
+				<div class="General-div" id="images"> Add images from the Document</br></br></div>
+				<div class="General-div" >				
+				Add images from a network location</br>
+				(Caution, the path should be relative to the current page, or a security exception will be thrown. Also this may not work locally!)</br>
+					<input class="textbox" id="txtbox" value=".\Images\01-WorldMap.png"> </input> <button onclick="AddFromNet(document.getElementById('txtbox').value);">Add Image</button>
+				</div>
+				
+				<div class="General-div" >
+				Add images from a local location</br></br>
+					<input type="file" id="files" name="files[]" onchange='handleFileSelect(this)'/> </input> <button id="AddImage2">Add Image</button>
+				</div>
+				
+			</td>
+            <td>                
+                <canvas id='canvas'> </canvas>
+            </td>           
+        </tr>
+    </table>
+</body>
+</html>

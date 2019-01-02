@@ -1,0 +1,319 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <!--for ie9 support-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <script type="text/javascript" src='../webControl/vdWebControl.js'></script>
+
+    <script type="text/javascript" src='../webControl/commands.js'></script>
+
+    <script type="text/javascript">
+
+		var ObjectTypes = new Array("vdLine", "vdPolyline", "vdText", "vdRect", "vdCircle", "vdEllipse", "vdArc", "vdImage", 
+		"vdInsert", "vd3DFace", "vdPolyface", "vdAttrib", "vdAttribDef", "vdInfinityLine", "vdPoint", "vdViewport", "vdPolyhatch", 
+		"vdLayout", "vdBlock", "vdLayer", "vdTextstyle", "vdHatchPattern", "vdLineType", "vdDimension", "vdMText", "vdImageDef", 
+		"vdMultiline", "vdGroundSurface", "vdLeader");
+		var floating = false;
+		var SupportedEntities = "Click on a check box to start using the oSnaps";
+		var maxHeight, maxWidth;
+		var nearest = false;
+		
+        function vdrawInitPageLoad() {
+            vdmanager.AttachCanvas('canvas', 900, 640, new Array(255, 255, 255));
+            
+			ExtendCanvas();
+			var noJava = document.getElementById('noJavascript')
+			if (noJava) noJava.innerHTML = "";
+			var vdcanvas = vdmanager.vdrawObject('canvas');
+			vdcanvas.GripManager.Enable = false;
+			vdcanvas.SelectDocument("../Drawings/oSnaps sample.vds");
+			
+			//This command ensures that the user won't be able to perform the default actions (pan, zoom etc.).
+			vdcanvas.ActiveAction().DefaultActions = 0;
+			vdcanvas.vdmousedown = _vdmousedown;
+			vdcanvas.vdmouseup = _vdmouseup;
+			vdcanvas.vdmousemove = _vdmousemove;
+			vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument;
+
+			//This defines the line width of the entities used during the Actions (e.g. the rubber line).
+            vdcanvas.SetActionLineWidth(2);
+			//This defines the osnap size in pixels.
+			vdcanvas.SetActionOsnapSize(20);
+			//This defines the color of the entities used during the Actions (e.g. the rubber line).
+			vdcanvas.SetActionOsnapColor(new Array(255,0,0));
+			//The pick size is used both in the select and osnap operations.
+			vdcanvas.PickSize = 25;
+        }		
+		//This function extends the canvas to the size of the HTML page.
+		function ExtendCanvas() {
+            var winW = 900, winH = 640;
+            if (document.body && document.body.offsetWidth) {
+                winW = document.body.offsetWidth;
+                winH = document.body.offsetHeight;
+            }
+            if (document.compatMode == 'CSS1Compat' &&
+                document.documentElement &&
+                document.documentElement.offsetWidth) {
+                winW = document.documentElement.offsetWidth;
+                winH = document.documentElement.offsetHeight;
+            }
+            if (window.innerWidth && window.innerHeight) {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+            }
+			maxHeight = winH-20;
+			maxWidth = winW-10;
+            vdmanager.vdrawObject('canvas').SetSize(winW-10, winH-20, new Array(255,255,255));
+        }
+		function _vdAfterOpenDocument(e){
+		    e.zoomExtents();
+		    e.EnableOsnapMode(true);
+		}		
+		function _vdmousedown(e){
+			if (floating)
+			{
+			if (!('ontouchstart' in document.documentElement)) {
+					floating = false;				
+					document.getElementById("text_Wrapper").style.display = "none";
+				}
+			}
+			if (!e.target.ActiveAction().IsStarted()) {
+				var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
+				//A new line action will be initiated if the user clicks inside the main black circle of the drawing.
+				if (entity &&  entity.XProperties && entity.XProperties.Items[0].Name == "Maincircle") {				
+					CmdLine('canvas');
+					document.getElementById("text").innerHTML = "Now hover your mouse over the various entities";
+					setDivToFloat(e);
+				}
+			}
+		}
+		function _vdmouseup(e){
+			setTimeout(e.target.redraw, 0);
+		}
+		//Mousemove checks if there's an entity under the mouse, also if this entity has xProperties. If this is the case
+		//a snap is going to show on this entity (except if for the main circle).
+		function _vdmousemove(e) {
+			if (e.target.ActiveAction().IsStarted()) {
+			
+				var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
+				if (entity)
+				{
+					if (entity.XProperties)
+					{
+						//This command enables the osnaps.
+						e.target.EnableOsnapMode(true);
+						//var oSnapmode = getOSnapMode(entity);
+						//if (!nearest)
+						//{
+							//This command sets the desired active osnaps.
+							//e.target.SetOsnapMode(oSnapmode);
+							if (entity.XProperties.Items[0].Name != 'Maincircle')
+								document.getElementById("text").innerHTML = "This is a " + ObjectTypes[entity._t-1] + " object";//" with " + osnapmodeStr + " snap";	
+							//osnapmodeStr = "";
+						//}
+					}
+					else
+					{
+						//this command disables the osnaps (without loosing the active osnapmode). When enabled, the selected
+						//osnaps will be as they were.
+						e.target.EnableOsnapMode(false);
+						document.getElementById("text").innerHTML = "You can also disable the oSnap functionality";
+					}
+				}
+				else if (floating)
+					//if (nearest)
+						//document.getElementById("text").innerHTML = "The nearest osnap mode is supported by all entities and it snaps on the closest part of the object";
+					//else
+						document.getElementById("text").innerHTML = SupportedEntities;	
+			}	
+			
+			if (floating)
+				relocateDiv(e);				
+		}		
+		//This functions checks the entity's xProperties and returns the corresponding osnapmode.
+		//For a full list of all supported osnaps, check the library's .chm help file.
+		function getOSnapMode(entity) {
+			var osnapmode = 0;			
+			var count = entity.XProperties.Items.length;
+			for(var i=0; i<count; i++)
+			{
+				if (entity.XProperties.Items[i].PropValue == "Endpoint"){
+					osnapmode += vdConst.OsnapMode_END;					
+				}
+				else if(entity.XProperties.Items[i].PropValue == "Midpoint") {
+					osnapmode += vdConst.OsnapMode_MID;
+				}	
+				else if(entity.XProperties.Items[i].PropValue == "Centerpoint") {
+					osnapmode += vdConst.OsnapMode_CEN;
+				}	
+				else if(entity.XProperties.Items[i].PropValue == "Insertion") {
+					osnapmode += vdConst.OsnapMode_INS;
+				}	
+				else if(entity.XProperties.Items[i].PropValue == "Node") {
+					osnapmode += vdConst.OsnapMode_NODE;
+				}	
+				else if(entity.XProperties.Items[i].PropValue == "Quadratic") {
+					osnapmode += vdConst.OsnapMode_QUA;
+				}
+				else continue;
+				if (i == 0)
+					osnapmodeStr = entity.XProperties.Items[i].PropValue;
+				else
+					osnapmodeStr += " and " + entity.XProperties.Items[i].PropValue;
+			}
+			return osnapmode;
+		}
+		function setOsnapMode(){
+			var osnapMode = 0;
+			if (document.getElementById("endpoint_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_END;
+				SupportedEntities = "The endpoint snap is supported by the vdRect, vdLine, vdPolyLine, vdPolyface, vd3dFace, vdArc, vdEllipse and vdImage";
+				//document.getElementById("text").innerHTML = "The endpoint osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			if (document.getElementById("midpoint_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_MID;
+				SupportedEntities = "The midpoint snap is supported by the vdRect, vdLine, vdPolyLine, vdPolyface, vd3dFace, vdArc, vdEllipse and vdImage";
+				//document.getElementById("text").innerHTML = "The midpoint osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			if (document.getElementById("centerpoint_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_CEN;
+				SupportedEntities = "The centerpoint snap is supported by the vdCircle, vdArc and vdEllipse";
+				//document.getElementById("text").innerHTML = "The centerpoint osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			if (document.getElementById("insertion_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_INS;
+				SupportedEntities = "The insertion snap is supported by the vdRect, vdImage and vdText";
+				//document.getElementById("text").innerHTML = "The insertion osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			if (document.getElementById("nearest_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_NEA;
+				SupportedEntities = "The nearest snap is supported by all the entities";
+				//document.getElementById("text").innerHTML = "The nearest osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			if (document.getElementById("node_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_NODE;
+				SupportedEntities = "The node snap is supported by the vdPoint";
+				//document.getElementById("text").innerHTML = "The node osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			if (document.getElementById("quadratic_check").checked)
+			{
+				osnapMode += vdConst.OsnapMode_QUA;
+				SupportedEntities = "The quadratic snap is supported by the vdCircle";
+				//document.getElementById("text").innerHTML = "The quadratic osnap mode is supported by all entities and it snaps on the closest part of the object";
+				//nearest = true;
+			}
+			//else
+				//nearest = false;
+			vdmanager.vdrawObject('canvas').SetOsnapMode(osnapMode);
+		}
+				
+	//Below lies a bit of HTML5 code just to make our sample a bit prettier.
+	function setDivToFloat(e)
+		{
+			document.getElementById("text_Wrapper").style.display = "";			
+			document.getElementById("text_Wrapper").style.right = Math.max(maxWidth - e.xPix - 250, 0);
+			document.getElementById("text_Wrapper").style.bottom = Math.max(maxHeight - e.yPix - 200, 15);
+			document.getElementById("text_Wrapper").style.zIndex = 1000;
+			floating = true;
+		}
+		function relocateDiv(e)
+		{
+			document.getElementById("text_Wrapper").style.right = Math.max(maxWidth - e.xPix - 250, 0);
+			document.getElementById("text_Wrapper").style.bottom = Math.max(maxHeight - e.yPix - 200, 15);
+		}
+		
+    </script>
+	<style>
+	#text_Wrapper
+	{
+		text-align:center;
+		font-family:Georgia, serif;
+		border:1px solid;
+		border-radius:25px;
+		padding:5px;
+		position:absolute;
+		left:auto;
+		top:auto;
+		background-color:#ffffff;
+		max-width:200px;
+	}
+	#oSnaps_Wrapper
+	{
+		text-align:center;
+		font-family:Georgia, serif;
+		border:1px solid;
+		border-radius:5px;
+		padding:5px;
+		position:absolute;
+		right:50px;
+		top:50px;
+		background-color:#ffffff;
+		/*max-width:200px;*/
+	}
+	</style>
+</head>
+<body onload="vdrawInitPageLoad()">
+
+<div id='noJavascript'>
+	<div style="height: 400px; width: 500px; background-color:#b0c4de;">
+	The browser you're using does not allow the use of Javascript, please enable Javascript execution or use a different web browser.
+	</div>
+</div>           
+<div id="text_Wrapper"><h4 id="text">Click inside the black circle</h4></div>            
+<div id="oSnaps_Wrapper">
+	<table>
+		<tr>
+			<td style="color:rgb(255,0,0);">
+				<input type="checkbox" id="endpoint_check" onclick="setOsnapMode()">Endpoint Snap</input>
+			</td>
+		</tr>
+		<tr>
+			<td style="color:rgb(0,193,193);">
+				<input type="checkbox" id="midpoint_check" onclick="setOsnapMode()">Midpoint Snap</input>
+			</td>
+		</tr>
+		<tr>
+			<td style="color:rgb(0,0,255);">
+				<input type="checkbox" id="centerpoint_check" onclick="setOsnapMode()">Centerpoint Snap</input>
+			</td>
+		</tr>
+		<tr>
+			<td style="color:rgb(0,193,0);">
+				<input type="checkbox" id="insertion_check" onclick="setOsnapMode()">Insertion Snap</input>
+			</td>
+		</tr>
+		<tr>
+			<td style="color:rgb(0,0,0);">
+				<input type="checkbox" id="nearest_check" onclick="setOsnapMode()">Nearest Snap</input>
+			</td>
+		</tr>
+		<tr>
+			<td style="color:rgb(178,184,4);">
+				<input type="checkbox" id="node_check" onclick="setOsnapMode()">Node Snap</input>
+			</td>
+		</tr>
+		<tr>
+			<td style="color:rgb(255,0,255);">
+				<input type="checkbox" id="quadratic_check" onclick="setOsnapMode()">Quadratic Snap</input>
+			</td>
+		</tr>
+	</table>
+</div>
+
+<canvas id='canvas'> </canvas>
+
+</body>
+</html>

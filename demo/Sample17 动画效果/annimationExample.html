@@ -1,0 +1,79 @@
+<html>
+<head>
+
+   <!--DESCRIPTION-->
+	<!--In this example we have the original drawing where we have created 9 region using polylines with hatch properteis fill mode solid with transparency 0 
+      so we can not see the polylines and the hatches.Also we have set tooltip in each of these hatches in order to display it in the whole room.
+      After these we created a polyline with transparency 70 and linetype DASHEDO which will be the route for the image.
+      We get the length of this polyline and using vdcanvas.MeasureCurve we get all the points of every 100 drawing units and we place the image on each point.
+      The last thing we do is to place also a text with text value the tolltip of the drawing and we place it under the image.-->  
+
+    <script type="text/javascript" src='..\webControl\vdWebControl.js'></script>	
+    <script type="text/javascript">
+	
+        var vdcanvas;       
+        function vdrawInitPageLoad() {//Intiallize the web control inside this function.It must be called inside onload event of this page
+            vdcanvas = vdmanager.AttachCanvas("canvas"); //create a new web control andattch it to the canvas elemement
+            vdcanvas.GripManager.Enable = false;
+            vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument; //defines the function that will be fire when a web control document loaded.  
+            vdcanvas.SelectDocument("home.vds");//Select an existing document 
+		
+        }       
+        function _vdAfterOpenDocument() {//fire when a web control document loaded.   
+            var document = vdcanvas.GetDocument();// we get the document
+			vdcanvas.ToolTip.AutoShow = false;// do not show the tooltip when the document doaded
+        }		
+		
+		var image;//Global variable
+        var points = [];//Global variable
+        function move() {
+
+            vdcanvas.ActionDrawEntities(null);//we do not draw anything and clear the screen from the previous action draw antities in order after this to draw the entities with the new insertion points
+            pline = vdcanvas.GetEntityItem('h_396864');// get the route polyline by its handle from the drawing that the image will follow
+            image = vdcanvas.AddImage("human.png", null, [0,0,0], 1500.0, 0, false, {});//the image that will not be added in the document
+            points = vdcanvas.MeasureCurve(pline, 100);// an array of points over the entity, where each point has a distance equal to length from the previous point which is 100 drawing units
+            tick = setInterval(timmer, 50);// timmer every 50 milliseconds
+        }
+        var k = 0;//Global variable
+        function timmer() {
+
+            if (k >= points.length) k = 0;// if the route ends it begins again from the start
+            var text = null;
+            image.InsertionPoint = [points[k][X] - image.Width / 2, points[k][Y] - image.Height / 2, points[k][Z]];//we calculate for the insertion point the center of the image 
+            var ptview = vdcanvas.WorldToView(points[k]);//we change the points in view
+            var ptpixel = vdcanvas.ViewToPixel(ptview);// we change the view points to pixel points
+            var entity = vdcanvas.GetEntityFromPoint(ptpixel[X], ptpixel[Y]);//we get the entity under the image 
+            if (entity && entity.ToolTip) {// we check if an entity exists and contains tooltip
+			    // we add and place the text under the image 
+                text = vdcanvas.AddText(entity.ToolTip, 1, [points[k][X], points[k][Y] - image.Height, points[k][Z]], vdConst.VdConstHorJust_VdTextHorCenter, vdConst.VdConstVerJust_VdTextVerCenter, 0, false, {});
+				//we set the color of the text white with transparency 150
+                text.PenColor = vdConst.colorFromString("255,255,255,150");
+				//we set the height of the text in 4 millimetres which will be always the same and it is not consist on the zoom 
+                text.AlignToViewSize = 4;
+            }
+            vdcanvas.UpdateFig(image);//we update the image 
+            vdcanvas.ActionDrawEntities(null); //we do not draw anything and clear the screen from the previous action draw antities in order after this to draw the entities with the new insertion points
+            vdcanvas.ActionDrawEntities([image]);// we draw again the image with the new insertion point
+            if (text) vdcanvas.ActionDrawEntities([text]);// we draw again the text with the new insertion point
+            k++;            
+         }
+         function stopMove() {
+             clearInterval(tick);//stop the timmer 
+             vdcanvas.ActionDrawEntities([image]); // and draw the image
+         }
+    </script>
+</head>
+<body onload="vdrawInitPageLoad()" bgcolor="#004d99">
+    <p>
+    <div>       	   	
+		 <button onclick="move()">Move</button>	
+		 <button onclick="stopMove()">stopMove</button>	
+    </div> 
+	</p>
+	<p>
+	<div>
+         <canvas id="canvas"  style="width: 620px; height:500px;"> </canvas>
+    </div>   
+	</p>
+</body>
+</html>
