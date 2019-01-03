@@ -3,35 +3,47 @@
 //This script is created by Samir Nigam. Do not remove, modify, or hide the author information. keep it intact.
 //Mail: nigam.samir@hotmail.com
 var setting = {
-    data: {
-        key: {
-            title: "title"
-        },
-        simpleData: {
-            enable: true
-        }
-    }
+    view : {
+		dblClickExpand : false,
+		showLine : false,
+		showIcon : false,
+		selectedMulti : false/*,
+//		addHoverDom: addHoverDom, //当鼠标移动到节点上时，显示用户自定义控件
+        removeHoverDom: removeHoverDom //离开节点时的操作
+*/	},
+	edit: {
+        enable: true,
+        showRenameBtn:false,
+        showRemoveBtn: false//setRemoveBtn
+    },
+	check : {
+		enable : true,
+		chkDisabledInherit: true
+	},
+	data : {
+		simpleData : {
+			enable : true,
+			idKey : "id",
+			pIdKey : "pId",
+			rootPId : "0"
+		}
+	},
+	callback : {
+		beforeCheck: beforeCheck,
+				onCheck: onCheck
+		/*onRightClick: onRightClick,
+		onCheck : setLayerStatus,
+		onClick : zTreeOnClick,
+		beforeRemove : beforeRemove,
+		onRemove: onRemove //移除事件*/
+	}
 };
 
 var zNodes =[
-    { id:1, pId:0, name:"父节点1", title:"", open:true},
-    { id:11, pId:1, name:"父节点11", title:""},
-    { id:111, pId:11, name:"叶子节点111", title:"", isHidden:true},
-    { id:112, pId:11, name:"叶子节点112", title:""},
-    { id:113, pId:11, name:"叶子节点113", title:""},
-    { id:12, pId:1, name:"父节点12", title:"", isHidden:true},
-    { id:121, pId:12, name:"叶子节点121", title:""},
-    { id:122, pId:12, name:"叶子节点122", title:"", isHidden:true},
-    { id:123, pId:12, name:"叶子节点123", title:""},
-    { id:2, pId:0, name:"父节点2", title:""},
-    { id:21, pId:2, name:"父节点21", title:"", isHidden:true},
-    { id:211, pId:21, name:"叶子节点211", title:""},
-    { id:212, pId:21, name:"叶子节点212", title:""},
-    { id:213, pId:21, name:"叶子节点213", title:""},
-    { id:22, pId:2, name:"父节点22", title:""},
-    { id:221, pId:22, name:"叶子节点221", title:""},
-    { id:222, pId:22, name:"叶子节点222", title:""},
-    { id:223, pId:22, name:"叶子节点223", title:""}
+    { id:1, pId:0, name:"进度", title:""},
+    { id:2, pId:0, name:"监测点", title:""},
+    { id:3, pId:0, name:"中心点", title:""},
+    { id:4, pId:0, name:"图层", title:"",checked:"true"}
 ];
 function setTitle(node) {
     var zTree = $.fn.zTree.getZTreeObj("treeDemo");
@@ -66,16 +78,29 @@ function hideNodes() {
     count();
 }
 
-$(document).ready(function(){
-    $.fn.zTree.init($("#treeDemo"), setting, zNodes);
-    $("#hideNodesBtn").bind("click", {type:"rename"}, hideNodes);
-    $("#showNodesBtn").bind("click", {type:"icon"}, showNodes);
-    setTitle();
-    count();
-});
-
-
-
+function beforeCheck(treeId, treeNode) {
+	// className = (className === "dark" ? "":"dark");
+	// showLog("[ "+getTime()+" beforeCheck ]&nbsp;&nbsp;&nbsp;&nbsp;" + treeNode.name );
+	// return (treeNode.doCheck !== false);
+}
+function onCheck(e, treeId, treeNode) {
+	if(treeNode.pId ==0){//父节点，分
+		if(treeNode.id==1){}
+		else if(treeNode.id==2){}
+		else if(treeNode.id==3){}
+		else if(treeNode.id==4){//图层一并开关
+			if(treeNode.checked==true){
+				EnableAllLayers();
+			}else{
+				DisableAllLayers();
+			}
+		}
+	}else{
+		if(treeNode.pId ==4){
+			ListOnClick(treeNode.checked, treeNode.value);
+		}
+	}
+}
 
 
 function ListBox(Arguments)
@@ -84,74 +109,16 @@ function ListBox(Arguments)
     this.Version = '1.0';
 	
 	//Local variables.
-    var Ids = 0;
-    var EventHandlers = new Array();
-	
-	var Base = Arguments.Base ? Arguments.Base : document.documentElement;
-	var Size = Arguments.Rows;	
-	var Width = Arguments.Width;
-	var NormalItemColor = Arguments.NormalItemColor ? Arguments.NormalItemColor : 'rgba(24,24,24,0.5)';
-	var NormalItemBackColor = Arguments.NormalItemBackColor ? Arguments.NormalItemBackColor : 'rgba(24,24,24,0.5)';
-	var AlternateItemColor = Arguments.AlternateItemColor ? Arguments.AlternateItemColor : 'rgba(24,24,24,0.5)';
-	var AlternateItemBackColor = Arguments.AlternateItemBackColor ? Arguments.AlternateItemBackColor : '#E0E0E0';
-	var SelectedItemColor = Arguments.SelectedItemColor ? Arguments.SelectedItemColor : 'rgba(24,24,24,0.5)';
-	var SelectedIItemBackColor = Arguments.SelectedIItemBackColor ? Arguments.SelectedIItemBackColor : '#E6A301';
-	var HoverItemColor = Arguments.HoverItemColor ? Arguments.HoverItemColor : 'rgba(24,24,24,0.5)';
-	var HoverItemBackColor = Arguments.HoverItemBackColor ? Arguments.HoverItemBackColor : '#2259D7';
-	var HoverBorderdColor = Arguments.HoverBorderdColor ? Arguments.HoverBorderdColor : 'orange';
-	var ClickEventHandler = Arguments.ClickEventHandler ? Arguments.ClickEventHandler : function(){ }; 
- 
-	//Create div for list box.
-    var ListBoxDiv = document.createElement('div');
-	ListBoxDiv.style.backgroundColor = 'rgba(24,24,24,0.5)';
-    ListBoxDiv.style.textAlign = 'left';
-    ListBoxDiv.style.verticalAlign = 'top';
-    ListBoxDiv.style.cursor = 'default';
-    ListBoxDiv.style.borderStyle = 'inset';
-    ListBoxDiv.style.overflow = 'auto';
-    ListBoxDiv.style.width = Width + 'px';
-	ListBoxDiv.style.height = (Size * 22) + 'px';
+    var Ids = 1;
 
 	this.AddItem = function(_Text, _Value, _Selected) {
-	    var Item = null;
-	    var CheckBox = null;
-	    var Span = null;
-
-	    Item = document.createElement('div');
-	    Item.style.backgroundColor = Ids % 2 == 0 ? NormalItemBackColor : AlternateItemBackColor;
-	    Item.style.color = Ids % 2 == 0 ? NormalItemColor : AlternateItemColor; ;
-	    Item.style.fontWeight = 'normal';
-	    Item.style.fontFamily = 'Verdana';
-	    Item.style.fontSize = '10pt';
-	    Item.style.textAlign = 'left';
-	    Item.style.verticalAlign = 'middle';
-	    Item.style.cursor = 'default';
-	    Item.style.borderTop = Ids % 2 == 0 ? '1px solid ' + NormalItemBackColor : '1px solid ' + AlternateItemBackColor;
-	    Item.style.borderBottom = Ids % 2 == 0 ? '1px solid ' + NormalItemBackColor : '1px solid ' + AlternateItemBackColor;
-	    Item.style.overflow = 'hidden';
-	    Item.style.textOverflow = 'ellipsis';
-	    Item.ItemIndex = Ids;
-
-	    CheckBox = document.createElement('input');
-	    CheckBox.type = 'checkbox';
-	    CheckBox.checked = _Selected;
-	    Item.appendChild(CheckBox);
-
-	    Span = document.createElement('span');
-	    Span.innerHTML = _Text;
-	    Span.value = _Value;
-	    Span.title = _Text;
-	    Item.appendChild(Span);
-
-	    ListBoxDiv.appendChild(Item);
-
-	    //Register events.
-	    WireUpEventHandler(Item, 'mouseover', function() { OnMouseOver(CheckBox, Item); });
-	    WireUpEventHandler(Item, 'mouseout', function() { OnMouseOut(CheckBox, Item); });
-	    WireUpEventHandler(Item, 'selectstart', function() { return false; });
-	    WireUpEventHandler(CheckBox, 'click', function() { OnClick(CheckBox, Item); });
-	    WireUpEventHandler(CheckBox, 'click', function() { ClickEventHandler(CheckBox, { IsSelected: CheckBox.checked, Text: _Text, Value: _Value, ItemIndex: Item.ItemIndex }); });
-
+		var nodetemp = {};
+		nodetemp.id = "30"+Ids;
+		nodetemp.pId = 4;
+		nodetemp.name = _Text;
+		nodetemp.value = _Value;
+		nodetemp.checked = _Selected;
+		zNodes.push(nodetemp);
 	    Ids++;
 	}
 	
@@ -321,8 +288,8 @@ function ListBox(Arguments)
 	    }
 	}
 	 
-	WireUpEventHandler(ListBoxDiv, 'contextmenu', function(){ return false; });
-    Base.appendChild(ListBoxDiv);
+	// WireUpEventHandler(ListBoxDiv, 'contextmenu', function(){ return false; });
+    // Base.appendChild(ListBoxDiv);
 }
     
 

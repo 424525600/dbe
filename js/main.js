@@ -1,4 +1,4 @@
-
+var vdcanvas;
 function _vdmousedown(e) {
     document.getElementById("display").focus();
     var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
@@ -10,11 +10,10 @@ function _vdmousedown(e) {
 }
 
 function _vdmousemove(e) {
-    info3.innerHTML = e.x.toString() + " , " + e.y.toString();
+    info3.innerHTML = e.x.toFixed(4) + " , " + e.y.toFixed(4);
 }
 
 function EnableAllLayers() {
-    oListBox.EnableAll();
     var vdcanvas = vdmanager.vdrawObject('display');
     var vddoc = vdcanvas.GetDocument();
     var layers = vddoc.layers;
@@ -25,7 +24,6 @@ function EnableAllLayers() {
     vdcanvas.redraw();
 }
 function DisableAllLayers() {
-    oListBox.DisableAll();
     var vdcanvas = vdmanager.vdrawObject('display');
     var vddoc = vdcanvas.GetDocument();
     if (vddoc == null) return;
@@ -34,25 +32,23 @@ function DisableAllLayers() {
     }
     vdcanvas.redraw();
 }
-function ListOnClick(Sender, EventArgs) {
-    if (Sender == null) return;
+function ListOnClick(showbool, value) {
+    if (showbool == null) return;
     var vdcanvas = vdmanager.vdrawObject('display');
     var layers = vdcanvas.GetDocument().Layers;
-    var layer = vdcanvas.GetDictItem(layers, "h_" + EventArgs.Value);
+    var layer = vdcanvas.GetDictItem(layers, "h_" + value);
     if (layer == null) return;
-
-    if (Sender.checked == true)
+    if (showbool == true)
         layer.Frozen = false;
     else
         layer.Frozen = true;
-
     vdcanvas.redraw();
 }
 
 var oListBox;
 function InitLayersList() {
     var Arguments = {
-        Base: document.getElementById('LayersListBox'),
+        Base: document.getElementById('treeDemo'),
         Rows: 15,
         Width: 150,
         NormalItemColor: null,
@@ -71,21 +67,30 @@ function InitLayersList() {
 }
 
 function _vdAfterOpenDocument(e) {
-    var vdcanvas = vdmanager.vdrawObject('display');
+    // var vdcanvas = vdmanager.vdrawObject('display');
+    vdcanvas = vdmanager.vdrawObject('display');
     var layers = vdcanvas.GetDocument().Layers;
 
     // oListBox.DeleteItems();
-    // for (var c = 0; c < layers.Items.length; c++) {
-    //     var layer = vdcanvas.GetDictItem(layers, layers.Items[c]);
-    //     var selected = true;
-    //     var fr = layer.Frozen;
-    //     if (fr === null) selected = true;
-    //     else {
-    //         if (fr === true) selected = false;
-    //         else selected = true;
-    //     }
-    //     oListBox.AddItem(layer.Name, layer.HandleId, selected);
-    // }
+    for (var c = 0; c < layers.Items.length; c++) {
+        var layer = vdcanvas.GetDictItem(layers, layers.Items[c]);
+        var selected = true;
+        var fr = layer.Frozen;
+        if (fr === null) selected = true;
+        else {
+            if (fr === true) selected = false;
+            else selected = true;
+        }
+        oListBox.AddItem(layer.Name, layer.HandleId, selected);
+    }
+
+    $(document).ready(function(){
+        $.fn.zTree.init($("#treeDemo"), setting, zNodes);
+        $("#hideNodesBtn").bind("click", {type:"rename"}, hideNodes);
+        $("#showNodesBtn").bind("click", {type:"icon"}, showNodes);
+        setTitle();
+        count();
+    });
 
     // var layouts = vdcanvas.GetDocument().LayOuts;
     // if (layouts == null) {
@@ -94,6 +99,26 @@ function _vdAfterOpenDocument(e) {
     // else {
     //     document.getElementById("LayoutsButton").disabled = false;
     // }
+    vdcanvas.vdActionDraw = _vdActiondraw;
+}
+function _vdActiondraw(action) {
+    var ptref = action.ReferencePoint; //get the reference point in world Coordinate System
+    if (!ptref || action.actionType != vdConst.ACTION_LINE_WORLD) return; //do nothing if the action is not waiting for a user reference point
+    var ptcur = action.CurrentPoint; //get the current mouse location in world Coordinate system
+    var dist = vdgeo.Distance3D(ptref, ptcur); //get the distance between reference and current point in drawing units
+    var angle = vdgeo.GetAngle(ptref, ptcur); //get the angle counter-clockwise relative to x direction in radians
+    var angledeg = vdgeo.RadiansToDegrees(angle); //convert the angle in degrees
+    if (angle > vdgeo.HALF_PI && angle < vdgeo.VD_270PI) angle += vdgeo.PI; //change the angle to be horizondally readable          
+    //create a temporary text and draw it in the center of user raber reference line
+    var midpt = vdgeo.MidPoint(ptref, ptcur);
+    var txtSize = vdcanvas.GetPixelSize() * 15;
+    var textvalue = dist.toFixed(2) + '<' + angledeg.toFixed(2);
+    var txt = vdcanvas.AddText(textvalue, txtSize, midpt, vdConst.VdConstHorJust_VdTextHorCenter, vdConst.VdConstVerJust_VdTextVerBottom, angle, false, {});
+    txt.PenColor = vdConst.colorFromString("255,255,0");
+    vdcanvas.DrawEntity(txt);
+    //显示距离信息
+    // printInfo('info2', dist.toFixed(2));
+    info2.innerHTML = dist.toFixed(2);
 }
 function nextlayout() {
     var vdcanvas = vdmanager.vdrawObject('display');
@@ -121,7 +146,7 @@ function vdrawInitPageLoad() {
     vdcanvas.ActiveAction().DefaultActions = vdConst.DEFAULT_ZOOMSCALE + vdConst.DEFAULT_SCROLL + vdConst.DEFAULT_ZOOMEXTENTS;
 
     ExtendCancvas();
-    // InitLayersList();
+    InitLayersList();
     Open();
 }
 function _progress(evt) {
@@ -133,7 +158,7 @@ function Open() {
     // var combo = document.getElementById('DrawingCombo');
     // var selected = combo.options[combo.selectedIndex].text;
     // var name = "./Drawings/" + selected + ".vds";
-    var name = "./demo/Drawings/Map.vds";
+    var name = "./demo/Drawings/test.vds";
     vdmanager.vdrawObject('display').SelectDocument(name);
 }
 function ExtendCancvas() {

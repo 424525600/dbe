@@ -5,13 +5,15 @@
     <!--for ie9 support-->
     <!--<meta http-equiv="X-UA-Compatible" content="IE=Edge" />-->
     <link rel="stylesheet" href="./css/zTreeStyle.css" type="text/css">
-    <link rel="stylesheet" href="./css/common.css" type="text/css">
+    <link rel="stylesheet" href="./css/common.css?ver=1" type="text/css">
     <script type="text/javascript" src='./js/vdWebControl.js'></script>
+    <script type="text/javascript" src='./js/mycommands.js?ver=1'></script>
     <script type="text/javascript" src="./js/jquery-1.4.4.min.js"></script>
     <script type="text/javascript" src="./js/jquery.ztree.core.js"></script>
+    <script type="text/javascript" src="./js/jquery.ztree.excheck.js"></script>
 
-    <script type="text/javascript" src='./js/ListBox.js'></script>
-    <script type="text/javascript" src='./js/main.js'></script>
+    <script type="text/javascript" src='./js/ListBox.js?ver=1'></script>
+    <script type="text/javascript" src='./js/main.js?ver=2'></script>
     <script type="text/javascript" src='./js/info.js'></script>
 
 </head>
@@ -20,7 +22,7 @@
     <div>
         <canvas id='display'> </canvas>
         <div id='noJavascript'>
-            <div style="height: 95%; width: 95%; background-color:#b0c4de;">
+            <div style="height: 95%; width: 95%; background-color:#ffffff;">
                 The browser you're using does not allow the use of Javascript, please enable Javascript execution or
                 use a
                 different web browser.
@@ -36,10 +38,16 @@
             <div><span id="infoClose" >X</span></div>
             <div id="infoWin_content">我是内容</div>
         </div>
-        <label id="Label1">
-            Coordinates :</label><label id="info3"></label>
-        <label id="Label2">
-            Info :</label><label id="info2"></label><br />
+        <label id="Label1">坐标:</label>
+        <label id="info3">0000.0000,0000.0000</label>
+        <label id="Label2">信息:</label>
+        <label id="info2">状态</label>
+            <div class="navbox_bottom">
+                <div title="测距" id="measure" class="navbox_toolbar" onclick="vdmanager.vdrawObject('display').GetUserLine(_onActionGetDistanceStateChanged);"><img src="./css/img/measure.png"></div>
+                <div title="测点" id="location" class="navbox_toolbar"><img src="./css/img/location.png"></div>
+                <div title="打印" id="print" class="navbox_toolbar"><img src="./css/img/print.png"></div>
+                <div title="清除" id="clear" class="navbox_toolbar"><img src="./css/img/measure.png"></div>
+            </div>
     </div>
 
 </body>
