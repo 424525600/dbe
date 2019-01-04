@@ -14,7 +14,7 @@
             vdcanvas = vdmanager.AttachCanvas("canvas"); //create a new web control attached it to the canvas elemement
             vdcanvas.GripManager.SelectMode = vdConst.GRIPMODE_AUTO + vdConst.GRIPMODE_SINGLE; //Set the mode to GRIPMODE_AUTO and GRIPMODE_SINGLE so the grips are automatically selected by vdraw control but only one entity of the document can have grips.
             vdcanvas.vdAfterOpenDocument = _vdAfterOpenDocument; //defines the function that will be fire when a web control document loaded.  	
-            vdcanvas.SelectDocument("vddocument.vds"); //load an existing document 
+            vdcanvas.SelectDocument("test.vds"); //load an existing document 
 
         }
         function _vdAfterOpenDocument() {//fire when a web control document loaded.   

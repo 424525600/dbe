@@ -1,11 +1,20 @@
 var vdcanvas;
+var distance_ptref=null;
+var distance_ptcur=null;
 function _vdmousedown(e) {
     document.getElementById("display").focus();
     var entity = e.target.GetEntityFromPoint(e.xPix, e.yPix);
     if (entity != null && entity._t != undefined) {
         info2.innerHTML = "Item Clicked Type : " + e.target.Fig_codeToString(entity._t) + ", Handle : " + entity.HandleId.toString();
     } else {
-        info2.innerHTML = "";
+        // info2.innerHTML = "";
+        if(distance_ptref){
+            var vdLine = vdcanvas.AddLine(distance_ptref, distance_ptcur, false);
+            vdLine.PenColor = {ColorIndex : 2 , ColorFlag : null};
+            // vdcanvas.zoomExtents();
+            vdcanvas.redraw();
+            distance_ptref =null;
+        }
     }
 }
 
@@ -92,19 +101,14 @@ function _vdAfterOpenDocument(e) {
         count();
     });
 
-    // var layouts = vdcanvas.GetDocument().LayOuts;
-    // if (layouts == null) {
-    //     document.getElementById("LayoutsButton").disabled = true;
-    // }
-    // else {
-    //     document.getElementById("LayoutsButton").disabled = false;
-    // }
     vdcanvas.vdActionDraw = _vdActiondraw;
 }
 function _vdActiondraw(action) {
     var ptref = action.ReferencePoint; //get the reference point in world Coordinate System
+    if(!distance_ptref){distance_ptref = ptref;}
     if (!ptref || action.actionType != vdConst.ACTION_LINE_WORLD) return; //do nothing if the action is not waiting for a user reference point
     var ptcur = action.CurrentPoint; //get the current mouse location in world Coordinate system
+    distance_ptcur = ptcur;
     var dist = vdgeo.Distance3D(ptref, ptcur); //get the distance between reference and current point in drawing units
     var angle = vdgeo.GetAngle(ptref, ptcur); //get the angle counter-clockwise relative to x direction in radians
     var angledeg = vdgeo.RadiansToDegrees(angle); //convert the angle in degrees
@@ -117,8 +121,7 @@ function _vdActiondraw(action) {
     txt.PenColor = vdConst.colorFromString("255,255,0");
     vdcanvas.DrawEntity(txt);
     //显示距离信息
-    // printInfo('info2', dist.toFixed(2));
-    info2.innerHTML = dist.toFixed(2);
+    printInfo('info2', dist.toFixed(2));
 }
 function nextlayout() {
     var vdcanvas = vdmanager.vdrawObject('display');

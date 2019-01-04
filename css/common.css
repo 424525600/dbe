@@ -52,7 +52,7 @@
     cursor: pointer;
 }
 #info2{
-    visibility: hidden;
+    /* visibility: hidden; */
 }
 #toolbarhome{
     position: absolute;

@@ -13,7 +13,7 @@
     <script type="text/javascript" src="./js/jquery.ztree.excheck.js"></script>
 
     <script type="text/javascript" src='./js/ListBox.js?ver=1'></script>
-    <script type="text/javascript" src='./js/main.js?ver=2'></script>
+    <script type="text/javascript" src='./js/main.js?ver=1'></script>
     <script type="text/javascript" src='./js/info.js'></script>
 
 </head>
@@ -38,16 +38,18 @@
             <div><span id="infoClose" >X</span></div>
             <div id="infoWin_content">我是内容</div>
         </div>
-        <label id="Label1">坐标:</label>
-        <label id="info3">0000.0000,0000.0000</label>
-        <label id="Label2">信息:</label>
-        <label id="info2">状态</label>
-            <div class="navbox_bottom">
-                <div title="测距" id="measure" class="navbox_toolbar" onclick="vdmanager.vdrawObject('display').GetUserLine(_onActionGetDistanceStateChanged);"><img src="./css/img/measure.png"></div>
-                <div title="测点" id="location" class="navbox_toolbar"><img src="./css/img/location.png"></div>
-                <div title="打印" id="print" class="navbox_toolbar"><img src="./css/img/print.png"></div>
-                <div title="清除" id="clear" class="navbox_toolbar"><img src="./css/img/measure.png"></div>
-            </div>
+        <div class="status">
+            <label class="navbox_bottom_left" id="Label1">坐标:</label>
+            <label class="navbox_bottom_left" id="info3">0000.0000,0000.0000</label>
+            <label class="navbox_bottom_left" id="Label2">信息:</label>
+            <label class="navbox_bottom_left" id="info2">zhuangtai</label>
+                <div class="navbox_bottom">
+                    <div title="测距" id="measure" class="navbox_toolbar" onclick="vdmanager.vdrawObject('display').GetUserLine(_onActionGetDistanceStateChanged);"><img src="./css/img/measure.png"></div>
+                    <div title="测点" id="location" class="navbox_toolbar"><img src="./css/img/location.png"></div>
+                    <div title="打印" id="print" class="navbox_toolbar"><img src="./css/img/print.png"></div>
+                    <div title="清除" id="clear" class="navbox_toolbar"><img src="./css/img/measure.png"></div>
+                </div>
+        </div>        
     </div>
 
 </body>
